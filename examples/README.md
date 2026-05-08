@@ -1,12 +1,13 @@
 # edr-xarray examples
 
-Two short Jupyter notebooks demonstrating real `edr-xarray` usage against
+Three short Jupyter notebooks demonstrating real `edr-xarray` usage against
 a live EDR server.  Set `server` in the first code cell of each notebook.
 
 | Notebook | What it shows |
 |---|---|
-| [01_basic_usage.ipynb](01_basic_usage.ipynb) | Discover collections, open one, inspect, fetch values. |
-| [02_subset_and_plot.ipynb](02_subset_and_plot.ipynb) | Subset to a bounding box and plot the result. |
+| [01_quickstart.ipynb](01_quickstart.ipynb) | Discover collections, open one, inspect. |
+| [02_fwi_map.ipynb](02_fwi_map.ipynb) | Single-day Fire Weather Index map over Spain with the EFFIS 6-class colormap. |
+| [03_fwi_animation.ipynb](03_fwi_animation.ipynb) | Multi-day FWI animation with a built-in date slider (plotly). |
 
 ## Running
 
