@@ -1,9 +1,8 @@
 # edr-xarray examples
 
-Self-contained Jupyter notebooks demonstrating the `edr-xarray` library.
-Every notebook spins up its own in-process mock EDR server using only
-Python's standard library — **no live server is required** to run any
-example.
+Jupyter notebooks demonstrating the `edr-xarray` library against a real
+EDR collection URL. Set `collection_url` in each notebook to point at your
+own server.
 
 ## Notebooks
 
@@ -24,21 +23,7 @@ uv run jupyter lab examples/
 ```
 
 Or open any notebook in your editor of choice — VS Code, JupyterLab,
-PyCharm, etc. The mock server is started inside the notebook itself,
-so each notebook is independently runnable in any order.
-
-## How the mock works
-
-Each notebook embeds a tiny `http.server.HTTPServer` on `127.0.0.1` with
-a randomly chosen port. The server serves two routes:
-
-- `GET /collections/demo_collection` — returns OGC EDR collection metadata.
-- `GET /collections/demo_collection/cube` — returns a CoverageJSON document.
-
-Query parameters are intentionally ignored by the mock so that any
-`bbox`, `datetime`, `z`, or `parameter-name` filter is accepted. The
-server runs in a background daemon thread and is shut down at the end
-of each notebook.
+PyCharm, etc. Update `collection_url` before running a notebook.
 
 ## Notes
 
