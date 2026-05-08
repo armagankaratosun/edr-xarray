@@ -11,9 +11,8 @@ collection as a lazy `xarray.Dataset`. Data is only fetched from the server when
 call `.values` or `.compute()` on a `DataArray` — opening the dataset issues at most one
 lightweight metadata request (plus an optional axis-discovery probe).
 
-Designed to be subclassed: downstream packages (e.g. `xarray-firecube`) can override
-transport, metadata parsing, CoverageJSON handling, and URL routing via seven documented
-hook methods on `EdrDataStore`.
+Designed to be subclassed: downstream packages can override transport, metadata parsing,
+CoverageJSON handling, and URL routing via seven documented hook methods on `EdrDataStore`.
 
 ## Installation
 

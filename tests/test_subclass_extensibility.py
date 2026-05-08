@@ -185,14 +185,11 @@ def test_all_7_hooks_have_default_implementations() -> None:
         assert callable(getattr(EdrDataStore, hook_name)), f"not callable: {hook_name}"
 
 
-def test_subclass_firecube_demo_works_end_to_end(httpserver: HTTPServer) -> None:
-    """Minimal xarray-firecube-style subclass works end-to-end.
+def test_subclass_with_extra_query_param_works_end_to_end(httpserver: HTTPServer) -> None:
+    """Subclass that injects an extra query parameter works end-to-end."""
 
-    Note: FakeFirecubeStore lives in tests/ only - NOT in src/edr_xarray/
-    """
-
-    class FakeFirecubeStore(EdrDataStore):
-        """Minimal demo of a firecube-specific EdrDataStore subclass."""
+    class ExtraParamStore(EdrDataStore):
+        """EdrDataStore subclass that appends a custom query parameter."""
 
         def _build_cube_url(self, collection_url: str, instance: str | None) -> str:
             return super()._build_cube_url(collection_url, instance)
@@ -201,17 +198,17 @@ def test_subclass_firecube_demo_works_end_to_end(httpserver: HTTPServer) -> None
             self, key: tuple[Any, ...], axes: tuple[AxisInfo, ...]
         ) -> dict[str, str]:
             result = super()._translate_indexer(key, axes)
-            result["refresh"] = "false"
+            result["custom"] = "value"
             return result
 
-    _, url = _setup(httpserver, "firecube")
-    store = FakeFirecubeStore(collection_url=url)
+    _, url = _setup(httpserver, "extra_param")
+    store = ExtraParamStore(collection_url=url)
     ds = store.build_dataset()
     _ = ds["temperature"].values
 
     cube_reqs = [r for r, _ in httpserver.log if "/cube" in r.path]
     last_cube_qs = cube_reqs[-1].query_string.decode()
-    assert "refresh=false" in last_cube_qs, f"refresh not found in {last_cube_qs}"
+    assert "custom=value" in last_cube_qs, f"custom param not found in {last_cube_qs}"
 
 
 def test_negotiate_output_format_hook_can_raise_custom_error(

@@ -282,7 +282,7 @@ Max Concurrent: 7 (Wave 1)
 
 ## TODOs
 
-- [ ] 1. **Project scaffolding (uv + ruff + mypy + pytest + LICENSE + entry point)**
+- [x] 1. **Project scaffolding (uv + ruff + mypy + pytest + LICENSE + entry point)**
 
   **What to do**:
   - Create `pyproject.toml` with project metadata: name `edr-xarray`, version `0.1.0`, requires-python `>=3.11`, license `Apache-2.0`, authors placeholder.
@@ -2798,7 +2798,7 @@ Max Concurrent: 7 (Wave 1)
 > **Do NOT auto-proceed after verification. Wait for user's explicit approval before marking work complete.**
 > **Never mark F1-F4 as checked before getting user's okay.** Rejection or user feedback → fix → re-run → present again → wait for okay.
 
-- [ ] F1. **Plan Compliance Audit** — `oracle`
+- [x] F1. **Plan Compliance Audit** — `oracle`
 
   Read `.sisyphus/plans/edr-xarray-backend.md` end-to-end. For each "Must Have": verify implementation exists (read file, run command, parse import). For each "Must NOT Have": grep `src/edr_xarray/` ONLY (NOT `tests/`, `docs/`, `README.md`, or fixtures — those legitimately mention forbidden strings in negative-test contexts, error messages, advertised-but-unsupported lists, and feature-matrix docs).
 
@@ -2827,19 +2827,19 @@ Max Concurrent: 7 (Wave 1)
 
   Output: `Must Have [N/N] | Must NOT Have [N/N] | Tasks [N/N] | Evidence [N/N] | VERDICT: APPROVE/REJECT`
 
-- [ ] F2. **Code Quality Review** — `unspecified-high`
+- [x] F2. **Code Quality Review** — `unspecified-high`
 
   Run `uv run ruff check src tests && uv run ruff format --check src tests && uv run mypy --strict src/edr_xarray && uv run pytest --cov=src/edr_xarray --cov-fail-under=95`. Review all changed files for: `as any`/`@ts-ignore`/Python `# type: ignore`, empty/swallowing `except`, `print()` in src, commented-out code, unused imports, generic variable names, premature abstractions (utilities with one call site), excessive defensive coding. Verify Apache-2.0 LICENSE present. Verify entry point in pyproject correctly points to existing class.
 
   Output: `Ruff [PASS/FAIL] | Format [PASS/FAIL] | Mypy [PASS/FAIL] | Pytest [N pass/N fail] | Coverage [N%] | Files [N clean/N issues] | VERDICT`
 
-- [ ] F3. **Real Manual QA** — `unspecified-high`
+- [x] F3. **Real Manual QA** — `unspecified-high`
 
   Start from clean state (`uv sync --refresh`). Execute EVERY QA scenario from EVERY task — follow exact steps, capture evidence. Specifically: (a) `import edr_xarray` succeeds; (b) `xr.backends.list_engines()` includes `"edr"`; (c) given a `pytest-httpserver` returning sample collection metadata + cube CoverageJSON, `xr.open_dataset(server_url + "/collections/test", engine="edr", parameter_names=["temp"], bbox=(10,40,11,41), datetime="2025-01-01T00:00:00Z")` returns a Dataset with the expected `data_vars`, `dims`, `coords`; (d) `ds["temp"].values` triggers exactly one cube HTTP request to the advertised cube URL; (e) `ds["temp"].sel(x=...).values` triggers a subset cube request; (f) pickling and unpickling `ds["temp"].variable.data` survives a round trip; (g) live test against firecube on `:8000` (if reachable) opens `msg_frm` collection with `instance="f024"`. Save evidence to `.sisyphus/evidence/final-qa/`.
 
   Output: `Scenarios [N/N pass] | Integration [N/N] | Edge Cases [N tested] | Live Firecube [PASS/SKIP] | VERDICT`
 
-- [ ] F4. **Scope Fidelity Check** — `deep`
+- [x] F4. **Scope Fidelity Check** — `deep`
 
   For each task: read "What to do", read actual diff (git log/diff). Verify 1:1 — everything in spec was built (no missing), nothing beyond spec was built (no creep). Check "Must NOT do" compliance per task. Detect cross-task contamination: Task N touching Task M's files. Flag unaccounted changes (files not assigned to any task). Verify package boundary discipline: no firecube-specific symbols in `src/edr_xarray/`; firecube assumptions only in `tests/test_live_firecube.py` and that test gracefully skips.
 

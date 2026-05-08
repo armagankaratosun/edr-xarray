@@ -7,5 +7,5 @@ build/
 .coverage
 .mypy_cache/
 .ruff_cache/
-.sisyphus/evidence/
+.sisyphus/
 *.egg-info/
