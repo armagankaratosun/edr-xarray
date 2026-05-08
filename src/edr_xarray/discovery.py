@@ -77,6 +77,15 @@ def _require_temporal(metadata: CollectionMetadata) -> TemporalExtent:
     return metadata.temporal
 
 
+def _minimal_probe_bbox(
+    bbox: tuple[float, float, float, float],
+) -> tuple[float, float, float, float]:
+    """Return a tiny bbox near the collection's SW corner to minimise cell count."""
+    lon_min, lat_min, lon_max, lat_max = bbox
+    step = min(0.1, (lon_max - lon_min) / 2, (lat_max - lat_min) / 2)
+    return (lon_min, lat_min, lon_min + step, lat_min + step)
+
+
 def _probe_axes(
     metadata: CollectionMetadata,
     request_callable: RequestCallable,
@@ -84,7 +93,7 @@ def _probe_axes(
 ) -> tuple[AxisInfo, ...]:
     temporal = _require_temporal(metadata)
     params = {
-        "bbox": encode_bbox(metadata.spatial.bbox),
+        "bbox": encode_bbox(_minimal_probe_bbox(metadata.spatial.bbox)),
         "datetime": encode_datetime(temporal.interval[0]),
         "parameter-name": next(iter(metadata.parameters.keys())),
         "f": "CoverageJSON",

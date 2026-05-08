@@ -154,10 +154,9 @@ def test_isel_subset_translates_to_narrow_query(httpserver: HTTPServer) -> None:
     assert "parameter-name" in qs, f"expected parameter-name in qs, got: {qs}"
     assert "bbox" in qs, f"expected bbox in qs, got: {qs}"
 
-    # Probe query bbox spans the full extent (10..11). isel(x=0) narrows
-    # the longitude to a degenerate point at 10.0.
+    # Probe uses a minimal bbox (not the full extent) to avoid server cell-count limits.
     probe_qs = cube_requests[0].query_string.decode()
-    assert "11" in probe_qs, f"probe should contain full extent: {probe_qs}"
+    assert "bbox" in probe_qs, f"probe should contain bbox: {probe_qs}"
     # The data fetch bbox is degenerate in x: lon_min == lon_max == 10.0.
     # Encoded form is "10.0,40.0,10.0,41.0" (commas may be url-encoded).
     assert "10.0" in qs

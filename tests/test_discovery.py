@@ -127,7 +127,7 @@ def test_probe_mode_4d_includes_z_axis(sample_cov_grid_4d: dict[str, Any]) -> No
     assert np.allclose(axes[1].values, [1000.0, 850.0, 500.0])
 
 
-def test_probe_mode_uses_full_bbox_and_first_param_in_request(
+def test_probe_mode_uses_minimal_bbox_and_first_param_in_request(
     sample_cov_grid_3d: dict[str, Any],
 ) -> None:
     request_callable = MagicMock(return_value=make_response(sample_cov_grid_3d))
@@ -143,7 +143,7 @@ def test_probe_mode_uses_full_bbox_and_first_param_in_request(
     request_callable.assert_called_once()
     assert request_callable.call_args.args == ("GET", "http://test/cube")
     assert request_callable.call_args.kwargs["params"] == {
-        "bbox": "10.0,40.0,11.0,41.0",
+        "bbox": "10.0,40.0,10.1,40.1",
         "datetime": "2025-01-01T00:00:00Z",
         "parameter-name": "temperature",
         "f": "CoverageJSON",
