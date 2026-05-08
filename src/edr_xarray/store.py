@@ -99,12 +99,21 @@ class EdrDataStore:
             z_str = encode_z(self.z)
             if z_str is not None:
                 extra["z"] = z_str
+        # Always send bbox and datetime so servers that require them don't reject
+        # unsubsetted fetches.  User-supplied values take priority; the collection
+        # extent is the fallback.
         if self.datetime is not None:
             dt_str = encode_datetime(self.datetime)
             if dt_str is not None:
                 extra["datetime"] = dt_str
+        elif self._metadata.temporal is not None:
+            t = self._metadata.temporal
+            lo, hi = t.interval
+            extra["datetime"] = lo if lo == hi else f"{lo}/{hi}"
         if self.bbox is not None:
             extra["bbox"] = encode_bbox(self.bbox)
+        else:
+            extra["bbox"] = encode_bbox(self._metadata.spatial.bbox)
 
         cube_url_str = self._cube_url
         store_ref = self

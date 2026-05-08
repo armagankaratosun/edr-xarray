@@ -174,7 +174,12 @@ def test_bbox_kwarg_propagates_to_extra_params(httpserver: HTTPServer) -> None:
     httpserver.expect_ordered_request(
         "/collections/test/cube",
         method="GET",
-        query_string={"bbox": "10,40,11,41", "f": "CoverageJSON", "parameter-name": "temperature"},
+        query_string={
+            "bbox": "10,40,11,41",
+            "datetime": "2025-01-01T00:00:00Z",
+            "f": "CoverageJSON",
+            "parameter-name": "temperature",
+        },
     ).respond_with_json(COV_3D)
 
     store = _store(httpserver, discovery="metadata_only", bbox=(10, 40, 11, 41))
@@ -193,7 +198,12 @@ def test_datetime_kwarg_propagates(httpserver: HTTPServer) -> None:
     httpserver.expect_ordered_request(
         "/collections/test/cube",
         method="GET",
-        query_string={"datetime": dt, "f": "CoverageJSON", "parameter-name": "temperature"},
+        query_string={
+            "datetime": dt,
+            "bbox": "10.0,40.0,11.0,41.0",
+            "f": "CoverageJSON",
+            "parameter-name": "temperature",
+        },
     ).respond_with_json(COV_3D)
 
     store = _store(httpserver, discovery="metadata_only", datetime=dt)
@@ -274,6 +284,8 @@ def test_z_and_crs_kwargs_propagate_to_extra_params(httpserver: HTTPServer) -> N
         query_string={
             "crs": "CRS84",
             "z": "1000.0",
+            "datetime": "2025-01-01T00:00:00Z",
+            "bbox": "10.0,40.0,11.0,41.0",
             "f": "CoverageJSON",
             "parameter-name": "temperature",
         },
