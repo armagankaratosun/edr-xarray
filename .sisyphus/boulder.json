@@ -1,0 +1,12 @@
+{
+  "active_plan": "/home/armagan/Desktop/projects/opensource/edr-xarray/.sisyphus/plans/edr-xarray-backend.md",
+  "started_at": "2026-05-08T10:39:04.859Z",
+  "session_ids": [
+    "ses_1f91cd170ffeEyVR8pg8ck2qbf"
+  ],
+  "session_origins": {
+    "ses_1f91cd170ffeEyVR8pg8ck2qbf": "direct"
+  },
+  "plan_name": "edr-xarray-backend",
+  "agent": "atlas"
+}
