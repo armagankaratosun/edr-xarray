@@ -9,3 +9,4 @@ build/
 .ruff_cache/
 .sisyphus/
 *.egg-info/
+.ipynb_checkpoints/
