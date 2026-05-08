@@ -1,4 +1,5 @@
 """Tests for edr_xarray.transport — httpx.Client wrapper."""
+
 # pyright: reportMissingImports=false
 from __future__ import annotations
 
@@ -71,9 +72,7 @@ def test_get_json_returns_parsed_dict(httpserver: HTTPServer) -> None:
 
 def test_404_raises_edr_server_error(httpserver: HTTPServer) -> None:
     """A 404 response is mapped to EdrServerError with status_code and url."""
-    httpserver.expect_request("/missing", method="GET").respond_with_data(
-        "not here", status=404
-    )
+    httpserver.expect_request("/missing", method="GET").respond_with_data("not here", status=404)
     url = httpserver.url_for("/missing")
     with Transport() as t, pytest.raises(EdrServerError) as exc_info:
         t.request("GET", url)

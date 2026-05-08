@@ -60,9 +60,7 @@ def test_pickle_preserves_store_state(httpserver: HTTPServer) -> None:
 
     url = _setup(httpserver)
     # cache=False keeps the lazy chain inspectable without a MemoryCachedArray wrapper.
-    ds = xr.open_dataset(
-        url, engine="edr", parameter_names=["temperature"], cache=False
-    )
+    ds = xr.open_dataset(url, engine="edr", parameter_names=["temperature"], cache=False)
 
     blob = pickle.dumps(ds)
     ds2 = pickle.loads(blob)
@@ -121,9 +119,7 @@ def test_dask_compute_via_chunks(httpserver: HTTPServer) -> None:
     import dask.array as da
 
     url = _setup(httpserver)
-    ds = xr.open_dataset(
-        url, engine="edr", parameter_names=["temperature"], chunks={"t": 1}
-    )
+    ds = xr.open_dataset(url, engine="edr", parameter_names=["temperature"], chunks={"t": 1})
 
     temp = ds["temperature"]
     assert isinstance(temp.data, da.Array)

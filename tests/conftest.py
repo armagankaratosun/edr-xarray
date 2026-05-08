@@ -2,6 +2,7 @@
 
 NO edr_xarray module imports here — fixtures are pure inputs.
 """
+
 from __future__ import annotations
 
 import copy
@@ -64,9 +65,9 @@ def register_metadata_endpoint(
     httpserver: HTTPServer, collection_id: str, payload: dict[str, Any]
 ) -> None:
     """Register a GET /collections/{collection_id} endpoint returning payload."""
-    httpserver.expect_request(
-        f"/collections/{collection_id}", method="GET"
-    ).respond_with_json(payload)
+    httpserver.expect_request(f"/collections/{collection_id}", method="GET").respond_with_json(
+        payload
+    )
 
 
 def register_cube_endpoint(

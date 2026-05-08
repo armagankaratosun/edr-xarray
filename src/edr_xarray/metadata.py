@@ -152,9 +152,7 @@ def _parse_cube_link(payload: dict[str, Any]) -> CubeLink:
         )
     href = cube["href"]
     variables = cube.get("variables", {}) or {}
-    output_formats = tuple(
-        variables.get("output_formats") or payload.get("output_formats") or []
-    )
+    output_formats = tuple(variables.get("output_formats") or payload.get("output_formats") or [])
     default_output_format = variables.get("default_output_format")
     crs_options = tuple(d["crs"] for d in variables.get("crs_details", []) if "crs" in d)
     return CubeLink(
@@ -173,9 +171,7 @@ def parse_collection_metadata(payload: dict[str, Any]) -> CollectionMetadata:
     if "id" not in payload:
         raise EdrMetadataError("required field 'id' missing in collection metadata")
     if "parameter_names" not in payload:
-        raise EdrMetadataError(
-            "required field 'parameter_names' missing in collection metadata"
-        )
+        raise EdrMetadataError("required field 'parameter_names' missing in collection metadata")
 
     extent = payload.get("extent")
     if not extent:

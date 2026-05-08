@@ -1,4 +1,5 @@
 """Tests for edr_xarray.errors — exception hierarchy."""
+
 # pyright: reportMissingImports=false
 from __future__ import annotations
 

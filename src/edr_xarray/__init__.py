@@ -1,4 +1,5 @@
 """edr-xarray: Generic OGC API-EDR 1.1 xarray backend."""
+
 # pyright: reportMissingImports=false
 from __future__ import annotations
 

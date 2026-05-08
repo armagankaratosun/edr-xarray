@@ -95,9 +95,7 @@ def _full_payload() -> dict[str, Any]:
                     },
                 }
             },
-            "instances": {
-                "link": {"href": "http://srv/collections/msg_frm/instances"}
-            },
+            "instances": {"link": {"href": "http://srv/collections/msg_frm/instances"}},
         },
     }
 
@@ -233,9 +231,7 @@ def test_cube_url_nonstandard_href_raises() -> None:
 def test_parameter_missing_observed_property() -> None:
     """Parameter without observedProperty yields standard_name=None, long_name=None."""
     payload = _minimal_payload()
-    payload["parameter_names"] = {
-        "x": {"type": "Parameter", "unit": {"symbol": {"value": "K"}}}
-    }
+    payload["parameter_names"] = {"x": {"type": "Parameter", "unit": {"symbol": {"value": "K"}}}}
     meta = parse_collection_metadata(payload)
     p = meta.parameters["x"]
     assert p.standard_name is None
@@ -270,8 +266,7 @@ def test_cube_url_relative_href() -> None:
     payload["data_queries"]["cube"]["link"]["href"] = "/collections/test/cube"
     meta = parse_collection_metadata(payload)
     assert (
-        cube_url(meta, instance=None, base_url="http://srv")
-        == "http://srv/collections/test/cube"
+        cube_url(meta, instance=None, base_url="http://srv") == "http://srv/collections/test/cube"
     )
 
 

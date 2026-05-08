@@ -404,7 +404,7 @@ Max Concurrent: 7 (Wave 1)
   - Files: `pyproject.toml`, `LICENSE`, `.gitignore`, `.python-version`, `README.md`, `src/edr_xarray/__init__.py`, `src/edr_xarray/py.typed`, `uv.lock`
   - Pre-commit: `uv sync && uv build --wheel`
 
-- [ ] 2. **Exception hierarchy (`errors.py`)**
+- [x] 2. **Exception hierarchy (`errors.py`)**
 
   **What to do**:
   - Create `src/edr_xarray/errors.py` with the exception hierarchy:
@@ -517,7 +517,7 @@ Max Concurrent: 7 (Wave 1)
   - Files: `src/edr_xarray/errors.py`, `tests/test_errors.py`
   - Pre-commit: `uv run pytest tests/test_errors.py && uv run ruff check src/edr_xarray/errors.py tests/test_errors.py && uv run mypy --strict src/edr_xarray/errors.py`
 
-- [ ] 3. **CoverageJSON parser (`coveragejson.py`)**
+- [x] 3. **CoverageJSON parser (`coveragejson.py`)**
 
   **What to do**:
   - Create `src/edr_xarray/coveragejson.py` with typed dataclasses and pure-function parsers:
@@ -705,7 +705,7 @@ Max Concurrent: 7 (Wave 1)
   - Files: `src/edr_xarray/coveragejson.py`, `tests/test_coveragejson.py`
   - Pre-commit: `uv run pytest tests/test_coveragejson.py && uv run ruff check src tests && uv run mypy --strict src/edr_xarray/coveragejson.py`
 
-- [ ] 4. **EDR collection metadata parser (`metadata.py`)**
+- [x] 4. **EDR collection metadata parser (`metadata.py`)**
 
   **What to do**:
   - Create `src/edr_xarray/metadata.py` with frozen dataclasses + a pure parser:
@@ -894,7 +894,7 @@ Max Concurrent: 7 (Wave 1)
   - Files: `src/edr_xarray/metadata.py`, `tests/test_metadata.py`
   - Pre-commit: `uv run pytest tests/test_metadata.py && uv run ruff check src/edr_xarray/metadata.py tests/test_metadata.py && uv run mypy --strict src/edr_xarray/metadata.py`
 
-- [ ] 5. **Query parameter encoders & validators (`query.py`)**
+- [x] 5. **Query parameter encoders & validators (`query.py`)**
 
   **What to do**:
   - Create `src/edr_xarray/query.py` with pure functions:
@@ -1051,7 +1051,7 @@ Max Concurrent: 7 (Wave 1)
   - Files: `src/edr_xarray/query.py`, `tests/test_query.py`
   - Pre-commit: `uv run pytest tests/test_query.py && uv run ruff check src tests && uv run mypy --strict src/edr_xarray/query.py`
 
-- [ ] 6. **Test infrastructure & fixtures (`tests/conftest.py` + `tests/data/*.json`)**
+- [x] 6. **Test infrastructure & fixtures (`tests/conftest.py` + `tests/data/*.json`)**
 
   **What to do**:
   - Create `tests/__init__.py` (empty).
@@ -1154,7 +1154,7 @@ Max Concurrent: 7 (Wave 1)
   - Files: `tests/__init__.py`, `tests/conftest.py`, `tests/test_conftest_smoke.py`, `tests/data/*.json`
   - Pre-commit: `uv run pytest tests/test_conftest_smoke.py && uv run ruff check tests`
 
-- [ ] 7. **CI workflow (`.github/workflows/ci.yml`)**
+- [x] 7. **CI workflow (`.github/workflows/ci.yml`)**
 
   **What to do**:
   - Create `.github/workflows/ci.yml` with one job `lint-typecheck-test`:
@@ -1242,7 +1242,7 @@ Max Concurrent: 7 (Wave 1)
   - Files: `.github/workflows/ci.yml`, `.github/dependabot.yml`, `CONTRIBUTING.md`
   - Pre-commit: `test -f .github/workflows/ci.yml && grep -q "ruff check" .github/workflows/ci.yml && grep -q "pytest" .github/workflows/ci.yml`
 
-- [ ] 8. **Indexer translation (`indexer.py`)**
+- [x] 8. **Indexer translation (`indexer.py`)**
 
   **What to do**:
   - Create `src/edr_xarray/indexer.py` with a pure translator from xarray's basic indexer key to EDR cube subset query parameters.
@@ -1384,7 +1384,7 @@ Max Concurrent: 7 (Wave 1)
   - Files: `src/edr_xarray/indexer.py`, `tests/test_indexer.py`
   - Pre-commit: `uv run pytest tests/test_indexer.py && uv run ruff check src tests && uv run mypy --strict src/edr_xarray/indexer.py`
 
-- [ ] 9. **HTTP transport with error mapping & session ownership (`transport.py`)**
+- [x] 9. **HTTP transport with error mapping & session ownership (`transport.py`)**
 
   **What to do**:
   - Create `src/edr_xarray/transport.py` with a small wrapper around `httpx.Client` enforcing error mapping, session ownership, and pickle safety.
@@ -1534,7 +1534,7 @@ Max Concurrent: 7 (Wave 1)
   - Files: `src/edr_xarray/transport.py`, `tests/test_transport.py`
   - Pre-commit: `uv run pytest tests/test_transport.py && uv run ruff check src tests && uv run mypy --strict src/edr_xarray/transport.py`
 
-- [ ] 10. **Coord discovery strategies (`discovery.py`)**
+- [x] 10. **Coord discovery strategies (`discovery.py`)**
 
   **What to do**:
   - Create `src/edr_xarray/discovery.py` with three discovery strategies callable as functions returning `tuple[AxisInfo, ...]` (or raising).
@@ -1666,7 +1666,7 @@ Max Concurrent: 7 (Wave 1)
   - Files: `src/edr_xarray/discovery.py`, `tests/test_discovery.py`
   - Pre-commit: `uv run pytest tests/test_discovery.py && uv run ruff check src tests && uv run mypy --strict src/edr_xarray/discovery.py`
 
-- [ ] 11. **Variable & Coordinates builder (`builder.py`)**
+- [x] 11. **Variable & Coordinates builder (`builder.py`)**
 
   **What to do**:
   - Create `src/edr_xarray/builder.py` that, given parsed metadata + discovered axes + a function that produces a per-parameter `BackendArray`, assembles `dict[str, xr.Variable]` for both data variables and coordinate variables, plus a global `attrs` dict.
@@ -1835,7 +1835,7 @@ Max Concurrent: 7 (Wave 1)
   - Files: `src/edr_xarray/builder.py`, `tests/test_builder.py`
   - Pre-commit: `uv run pytest tests/test_builder.py && uv run ruff check src tests && uv run mypy --strict src/edr_xarray/builder.py`
 
-- [ ] 12. **EdrBackendArray with lazy `__getitem__` + pickle support (`array.py`)**
+- [x] 12. **EdrBackendArray with lazy `__getitem__` + pickle support (`array.py`)**
 
   **What to do**:
   - Create `src/edr_xarray/array.py` with `EdrBackendArray(BackendArray)` from xarray. Crucially, **all cube fetches MUST flow through the store's documented hooks** (`_request`, `_translate_indexer`, `_parse_coveragejson`) so subclasses overriding hooks see every cube call. The BackendArray holds a back-reference to the store.
@@ -1966,7 +1966,7 @@ Max Concurrent: 7 (Wave 1)
   - Files: `src/edr_xarray/array.py`, `tests/test_array.py`
   - Pre-commit: `uv run pytest tests/test_array.py && uv run ruff check src tests && uv run mypy --strict src/edr_xarray/array.py`
 
-- [ ] 13. **EdrDataStore orchestrator with documented subclass hooks (`store.py`)**
+- [x] 13. **EdrDataStore orchestrator with documented subclass hooks (`store.py`)**
 
   **What to do**:
   - Create `src/edr_xarray/store.py` with `EdrDataStore` class. NOT an xarray `AbstractDataStore` subclass — it's our own orchestrator.
@@ -2104,7 +2104,7 @@ Max Concurrent: 7 (Wave 1)
   - Files: `src/edr_xarray/store.py`, `tests/test_store.py`
   - Pre-commit: `uv run pytest tests/test_store.py && uv run ruff check src tests && uv run mypy --strict src/edr_xarray/store.py`
 
-- [ ] 14. **EdrBackendEntrypoint registered as `engine="edr"` (`backend.py`)**
+- [x] 14. **EdrBackendEntrypoint registered as `engine="edr"` (`backend.py`)**
 
   **What to do**:
   - Create `src/edr_xarray/backend.py` with `EdrBackendEntrypoint(xarray.backends.BackendEntrypoint)`:
@@ -2248,7 +2248,7 @@ Max Concurrent: 7 (Wave 1)
   - Files: `src/edr_xarray/backend.py`, `src/edr_xarray/__init__.py`, `tests/test_backend.py`
   - Pre-commit: `uv run pytest tests/test_backend.py && uv run ruff check src tests && uv run mypy --strict src/edr_xarray`
 
-- [ ] 15. **Full integration test (`tests/test_integration_full_flow.py`)**
+- [x] 15. **Full integration test (`tests/test_integration_full_flow.py`)**
 
   **What to do**:
   - Create `tests/test_integration_full_flow.py` exercising the complete flow against `pytest-httpserver`:
@@ -2347,7 +2347,7 @@ Max Concurrent: 7 (Wave 1)
   - Files: `tests/test_integration_full_flow.py`
   - Pre-commit: `uv run pytest tests/test_integration_full_flow.py && uv run ruff check tests`
 
-- [ ] 16. **Lazy semantics test (`tests/test_lazy_semantics.py`)**
+- [x] 16. **Lazy semantics test (`tests/test_lazy_semantics.py`)**
 
   **What to do**:
   - Create `tests/test_lazy_semantics.py` proving that `open_dataset` does NOT fetch cube data:
@@ -2440,7 +2440,7 @@ Max Concurrent: 7 (Wave 1)
   - Files: `tests/test_lazy_semantics.py`
   - Pre-commit: `uv run pytest tests/test_lazy_semantics.py`
 
-- [ ] 17. **Pickle round-trip + Dask compatibility test (`tests/test_pickle_dask.py`)**
+- [x] 17. **Pickle round-trip + Dask compatibility test (`tests/test_pickle_dask.py`)**
 
   **What to do**:
   - Create `tests/test_pickle_dask.py` (skip Dask tests gracefully if Dask not installed):
@@ -2529,7 +2529,7 @@ Max Concurrent: 7 (Wave 1)
   - Files: `tests/test_pickle_dask.py`
   - Pre-commit: `uv run pytest tests/test_pickle_dask.py`
 
-- [ ] 18. **Subclass extensibility test (`tests/test_subclass_extensibility.py`)**
+- [x] 18. **Subclass extensibility test (`tests/test_subclass_extensibility.py`)**
 
   **What to do**:
   - Create `tests/test_subclass_extensibility.py` proving each documented hook on `EdrDataStore` is overridable. This test is the contract for downstream packages like `xarray-firecube`.
@@ -2635,7 +2635,7 @@ Max Concurrent: 7 (Wave 1)
   - Files: `tests/test_subclass_extensibility.py`
   - Pre-commit: `uv run pytest tests/test_subclass_extensibility.py`
 
-- [ ] 19. **README usage examples + opt-in live firecube smoke test (`README.md`, `tests/test_live_firecube.py`)**
+- [x] 19. **README usage examples + opt-in live firecube smoke test (`README.md`, `tests/test_live_firecube.py`)**
 
   **What to do**:
   - Rewrite `README.md` (replacing T1's skeleton) with concrete sections:

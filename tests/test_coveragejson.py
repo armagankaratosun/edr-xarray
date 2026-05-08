@@ -1,4 +1,5 @@
 """Tests for edr_xarray.coveragejson — Grid CoverageJSON parser."""
+
 # pyright: reportMissingImports=false
 from __future__ import annotations
 
@@ -576,9 +577,7 @@ def sample_cov_pointseries() -> dict[str, Any]:
     import json
     from pathlib import Path
 
-    return json.loads(
-        (Path(__file__).parent / "data" / "cov_pointseries.json").read_text()
-    )
+    return json.loads((Path(__file__).parent / "data" / "cov_pointseries.json").read_text())
 
 
 @pytest.fixture()
@@ -587,6 +586,4 @@ def sample_cov_tiled() -> dict[str, Any]:
     import json
     from pathlib import Path
 
-    return json.loads(
-        (Path(__file__).parent / "data" / "cov_tiled.json").read_text()
-    )
+    return json.loads((Path(__file__).parent / "data" / "cov_tiled.json").read_text())

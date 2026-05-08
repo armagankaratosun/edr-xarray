@@ -23,9 +23,7 @@ from edr_xarray.indexer import AxisInfo
 from edr_xarray.metadata import CollectionMetadata
 from edr_xarray.store import EdrDataStore
 
-META: dict[str, Any] = json.loads(
-    Path("tests/data/collection_metadata_basic.json").read_text()
-)
+META: dict[str, Any] = json.loads(Path("tests/data/collection_metadata_basic.json").read_text())
 COV_3D: dict[str, Any] = json.loads(Path("tests/data/cov_grid_3d.json").read_text())
 
 
@@ -36,7 +34,9 @@ def _setup(httpserver: HTTPServer, collection_id: str = "hook_test") -> tuple[di
     cube_href = httpserver.url_for(f"/collections/{collection_id}/cube")
     meta["data_queries"]["cube"]["link"]["href"] = cube_href
     httpserver.expect_ordered_request(f"/collections/{collection_id}").respond_with_json(meta)
-    httpserver.expect_ordered_request(f"/collections/{collection_id}/cube").respond_with_json(COV_3D)
+    httpserver.expect_ordered_request(f"/collections/{collection_id}/cube").respond_with_json(
+        COV_3D
+    )
     httpserver.expect_request(f"/collections/{collection_id}/cube").respond_with_json(COV_3D)
     return meta, httpserver.url_for(f"/collections/{collection_id}")
 
@@ -222,9 +222,7 @@ def test_negotiate_output_format_hook_can_raise_custom_error(
     class StrictFormatStore(EdrDataStore):
         def _negotiate_output_format(self, advertised: tuple[str, ...]) -> str:
             if "CoverageJSON" not in advertised:
-                raise EdrUnsupportedFeatureError(
-                    "StrictFormatStore requires CoverageJSON"
-                )
+                raise EdrUnsupportedFeatureError("StrictFormatStore requires CoverageJSON")
             return "CoverageJSON"
 
     _, url = _setup(httpserver, "strict_format")

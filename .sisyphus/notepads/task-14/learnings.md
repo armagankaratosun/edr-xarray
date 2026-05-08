@@ -1,0 +1,2 @@
+- Added EdrBackendEntrypoint in src/edr_xarray/backend.py; xarray plugin entry point already in pyproject makes xr.backends.list_engines()["edr"] available once class exists.
+- Backend tests use pytest-httpserver ordered metadata + probe cube requests; build_dataset in probe mode intentionally performs exactly two requests before any data values are accessed.

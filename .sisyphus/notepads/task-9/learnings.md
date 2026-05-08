@@ -1,0 +1,7 @@
+2026-05-08: `httpx.Client` is not pickleable; for `__getstate__`/`__setstate__`, drop the session in state and rebuild with `httpx.Client()` on `__setstate__`. Mark the rebuilt session as owned (`_owns = True`) so unpickled instances clean up after themselves.
+2026-05-08: `response.json()` annotated as `Any` triggers mypy strict; suppress with `# type: ignore[no-any-return]` (NOT `[return-value]` — wrong code). The ruff `RUF100` rule will flag stale ignores too.
+2026-05-08: `pytest-httpserver`'s `expect_request(headers={...})` matches required headers exactly — extra inbound headers are allowed but missing ones cause the server to reject. Useful for verifying header passthrough.
+2026-05-08: `ruff` D-rule `D413` requires a blank line *after* the last section in Google-style docstrings (`Args:`, `Raises:`). Easy miss when copy-pasting.
+2026-05-08: `pytest-httpserver`'s `expect_request(query_string={...})` matches required query params; encoding follows `urllib`. Pass plain dict-of-strings to match.
+2026-05-08: For network-error testing without external dependencies, `http://127.0.0.1:1/` (port 1) is virtually guaranteed to refuse a connection on Linux — triggers `httpx.ConnectError` → `EdrServerError` mapping path. Use a short timeout (`Transport(timeout=1.0)`) so the test stays fast.
+2026-05-08: RFC 7807 problem+json fallback: when content-type matches but body is unparseable JSON or is a JSON array (not object), surface `response.text` instead of crashing. Cover with `json.JSONDecodeError` and `isinstance(body, dict)` guards.

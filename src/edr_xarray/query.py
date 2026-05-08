@@ -19,9 +19,7 @@ __all__ = [
     "negotiate_format",
 ]
 
-_ISO_INSTANT_RE = re.compile(
-    r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z"
-)
+_ISO_INSTANT_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z")
 
 
 def _is_iso_instant(value: str) -> bool:

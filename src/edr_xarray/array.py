@@ -40,6 +40,7 @@ if TYPE_CHECKING:
 
         def _parse_coveragejson(self, payload: dict[str, Any]) -> CoverageData: ...
 
+
 __all__ = ["EdrBackendArray"]
 
 

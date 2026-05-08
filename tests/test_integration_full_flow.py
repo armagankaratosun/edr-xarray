@@ -52,13 +52,9 @@ def _register_meta_and_probe(
 def test_open_dataset_then_select_then_compute_full_flow(httpserver: HTTPServer) -> None:
     """Full flow: open -> inspect dims/coords/attrs -> compute -> verify request log."""
     collection_url = _register_meta_and_probe(httpserver, "test_coll")
-    httpserver.expect_request(
-        "/collections/test_coll/cube", method="GET"
-    ).respond_with_json(COV_3D)
+    httpserver.expect_request("/collections/test_coll/cube", method="GET").respond_with_json(COV_3D)
 
-    ds = xr.open_dataset(
-        collection_url, engine="edr", parameter_names=["temperature"]
-    )
+    ds = xr.open_dataset(collection_url, engine="edr", parameter_names=["temperature"])
 
     assert "temperature" in ds.data_vars
     assert set(ds.dims) == {"t", "y", "x"}
@@ -83,24 +79,16 @@ def test_4d_cube_with_z(httpserver: HTTPServer) -> None:
     """4D cube with z axis is correctly discovered and exposed via probe."""
     meta = copy.deepcopy(META_BASIC)
     meta["id"] = "wx"
-    meta["data_queries"]["cube"]["link"]["href"] = httpserver.url_for(
-        "/collections/wx/cube"
-    )
+    meta["data_queries"]["cube"]["link"]["href"] = httpserver.url_for("/collections/wx/cube")
 
-    httpserver.expect_ordered_request(
-        "/collections/wx", method="GET"
-    ).respond_with_json(meta)
-    httpserver.expect_ordered_request(
-        "/collections/wx/cube", method="GET"
-    ).respond_with_json(COV_4D)
-    httpserver.expect_request(
-        "/collections/wx/cube", method="GET"
-    ).respond_with_json(COV_4D)
+    httpserver.expect_ordered_request("/collections/wx", method="GET").respond_with_json(meta)
+    httpserver.expect_ordered_request("/collections/wx/cube", method="GET").respond_with_json(
+        COV_4D
+    )
+    httpserver.expect_request("/collections/wx/cube", method="GET").respond_with_json(COV_4D)
 
     collection_url = httpserver.url_for("/collections/wx")
-    ds = xr.open_dataset(
-        collection_url, engine="edr", parameter_names=["temperature"]
-    )
+    ds = xr.open_dataset(collection_url, engine="edr", parameter_names=["temperature"])
 
     assert "z" in ds.dims
     assert "temperature" in ds.data_vars
@@ -118,16 +106,12 @@ def test_instance_kwarg_routes_through_instance_url(httpserver: HTTPServer) -> N
     """instance= kwarg routes cube requests through /instances/{id}/cube."""
     meta = copy.deepcopy(META_INSTANCES)
     meta["id"] = "model"
-    meta["data_queries"]["cube"]["link"]["href"] = httpserver.url_for(
-        "/collections/model/cube"
-    )
+    meta["data_queries"]["cube"]["link"]["href"] = httpserver.url_for("/collections/model/cube")
     meta["data_queries"]["instances"]["link"]["href"] = httpserver.url_for(
         "/collections/model/instances"
     )
 
-    httpserver.expect_request(
-        "/collections/model", method="GET"
-    ).respond_with_json(meta)
+    httpserver.expect_request("/collections/model", method="GET").respond_with_json(meta)
     httpserver.expect_request(
         "/collections/model/instances/f024/cube", method="GET"
     ).respond_with_json(COV_3D)
@@ -154,9 +138,7 @@ def test_open_with_drop_variables(httpserver: HTTPServer) -> None:
     """drop_variables removes variables from the dataset after build."""
     collection_url = _register_meta_and_probe(httpserver, "test_drop")
 
-    ds = xr.open_dataset(
-        collection_url, engine="edr", drop_variables=["temperature"]
-    )
+    ds = xr.open_dataset(collection_url, engine="edr", drop_variables=["temperature"])
 
     assert "temperature" not in ds.data_vars
     assert set(ds.coords) >= {"t", "y", "x"}
@@ -200,9 +182,7 @@ def test_session_injection(httpserver: HTTPServer) -> None:
 def test_static_bbox_kwarg_propagates(httpserver: HTTPServer) -> None:
     """bbox= kwarg at open time becomes a static filter on cube fetches."""
     collection_url = _register_meta_and_probe(httpserver, "bbox_coll")
-    httpserver.expect_request(
-        "/collections/bbox_coll/cube", method="GET"
-    ).respond_with_json(COV_3D)
+    httpserver.expect_request("/collections/bbox_coll/cube", method="GET").respond_with_json(COV_3D)
 
     ds = xr.open_dataset(
         collection_url,
@@ -213,9 +193,7 @@ def test_static_bbox_kwarg_propagates(httpserver: HTTPServer) -> None:
     arr = ds["temperature"].values
     assert arr.shape == (1, 2, 2)
 
-    cube_requests = [
-        request for request, _ in httpserver.log if "/cube" in request.path
-    ]
+    cube_requests = [request for request, _ in httpserver.log if "/cube" in request.path]
     assert len(cube_requests) >= 1
     data_fetch_qs = cube_requests[-1].query_string.decode()
     assert "bbox=" in data_fetch_qs

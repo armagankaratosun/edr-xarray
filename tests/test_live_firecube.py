@@ -5,6 +5,7 @@ Run with:
 
 Skipped automatically when EDR_LIVE_URL is not set or server is unreachable.
 """
+
 from __future__ import annotations
 
 import os

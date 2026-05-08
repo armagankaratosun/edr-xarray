@@ -64,8 +64,7 @@ def test_open_dataset_metadata_only_with_metadata_only_discovery(
     )
 
     assert len(httpserver.log) == 1, (
-        f"expected 1 request, got {len(httpserver.log)}: "
-        f"{[r.path for r, _ in httpserver.log]}"
+        f"expected 1 request, got {len(httpserver.log)}: {[r.path for r, _ in httpserver.log]}"
     )
     assert "/collections/m" in httpserver.log[0][0].path
     assert "temperature" in ds.data_vars
@@ -88,8 +87,7 @@ def test_open_dataset_with_probe_does_one_metadata_one_probe(
     )
 
     assert len(httpserver.log) == 2, (
-        f"expected 2 requests, got {len(httpserver.log)}: "
-        f"{[r.path for r, _ in httpserver.log]}"
+        f"expected 2 requests, got {len(httpserver.log)}: {[r.path for r, _ in httpserver.log]}"
     )
     paths = [r.path for r, _ in httpserver.log]
     assert "/collections/p" in paths[0]
@@ -103,9 +101,7 @@ def test_compute_triggers_cube_fetch(httpserver: HTTPServer) -> None:
     """.values on a DataArray issues 1 additional HTTP request."""
     url = _register(httpserver, "c")
     # Register an unordered handler for subsequent data fetches.
-    httpserver.expect_request(
-        "/collections/c/cube", method="GET"
-    ).respond_with_json(COV_3D)
+    httpserver.expect_request("/collections/c/cube", method="GET").respond_with_json(COV_3D)
 
     ds = xr.open_dataset(url, engine="edr", parameter_names=["temperature"])
     assert len(httpserver.log) == 2
@@ -113,8 +109,7 @@ def test_compute_triggers_cube_fetch(httpserver: HTTPServer) -> None:
     _ = ds["temperature"].values
 
     assert len(httpserver.log) == 3, (
-        f"expected 3 requests, got {len(httpserver.log)}: "
-        f"{[r.path for r, _ in httpserver.log]}"
+        f"expected 3 requests, got {len(httpserver.log)}: {[r.path for r, _ in httpserver.log]}"
     )
 
     ds.close()
@@ -123,22 +118,17 @@ def test_compute_triggers_cube_fetch(httpserver: HTTPServer) -> None:
 def test_repeated_compute_triggers_repeated_fetch(httpserver: HTTPServer) -> None:
     """Calling .values twice with cache=False issues 2 additional requests."""
     url = _register(httpserver, "r")
-    httpserver.expect_request(
-        "/collections/r/cube", method="GET"
-    ).respond_with_json(COV_3D)
+    httpserver.expect_request("/collections/r/cube", method="GET").respond_with_json(COV_3D)
 
     # cache=False disables xarray's MemoryCachedArray wrapper so each .values
     # call goes back to the EDR backend; this proves laziness end-to-end.
-    ds = xr.open_dataset(
-        url, engine="edr", parameter_names=["temperature"], cache=False
-    )
+    ds = xr.open_dataset(url, engine="edr", parameter_names=["temperature"], cache=False)
     _ = ds["temperature"].values
     _ = ds["temperature"].values
 
     # metadata + probe + fetch1 + fetch2 = 4
     assert len(httpserver.log) == 4, (
-        f"expected 4 requests, got {len(httpserver.log)}: "
-        f"{[r.path for r, _ in httpserver.log]}"
+        f"expected 4 requests, got {len(httpserver.log)}: {[r.path for r, _ in httpserver.log]}"
     )
 
     ds.close()
@@ -147,9 +137,7 @@ def test_repeated_compute_triggers_repeated_fetch(httpserver: HTTPServer) -> Non
 def test_isel_subset_translates_to_narrow_query(httpserver: HTTPServer) -> None:
     """Isel with a spatial scalar produces a narrower bbox in the cube request."""
     url = _register(httpserver, "s")
-    httpserver.expect_request(
-        "/collections/s/cube", method="GET"
-    ).respond_with_json(COV_3D)
+    httpserver.expect_request("/collections/s/cube", method="GET").respond_with_json(COV_3D)
 
     ds = xr.open_dataset(url, engine="edr", parameter_names=["temperature"])
 

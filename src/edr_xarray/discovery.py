@@ -40,9 +40,7 @@ def axis_kind(name: str) -> AxisKind:
         return "z"
     if normalized in {"t", "time"}:
         return "t"
-    raise EdrCoverageJsonError(
-        f"axis name '{name}' could not be classified as x/y/z/t"
-    )
+    raise EdrCoverageJsonError(f"axis name '{name}' could not be classified as x/y/z/t")
 
 
 def _datetime64_values(values: tuple[str, ...]) -> np.ndarray[Any, np.dtype[np.datetime64]]:

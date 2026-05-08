@@ -6,6 +6,7 @@ Provides:
   - Pickle safety via __getstate__/__setstate__ (drops the session, creates new on restore)
   - Session ownership: owned sessions closed on Transport.close(); injected sessions left open
 """
+
 from __future__ import annotations
 
 import json

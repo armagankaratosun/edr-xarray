@@ -1,0 +1,2 @@
+2026-05-08: `indexing.LazilyIndexedArray` requires the wrapped backend to expose `ndim`; `BackendArray` provides this through its shape mixin, but simple array-like QA doubles may need a thin `BackendArray` adapter that supplies shape/dtype without reading.
+2026-05-08: For pytest-cov in this repo, `--cov=edr_xarray.builder` produced the expected per-module coverage report; path-like `--cov=src/edr_xarray/builder` was interpreted as an unimported module and produced no coverage data.

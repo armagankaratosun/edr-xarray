@@ -2,7 +2,7 @@
 
 Not an xarray AbstractDataStore subclass — this is our own orchestrator.
 All external access goes through documented subclass hooks that downstream
-packages (e.g. xarray-firecube) can override.
+server-specific packages can override to add custom behavior.
 """
 
 from __future__ import annotations
@@ -83,12 +83,8 @@ class EdrDataStore:
         if not isinstance(metadata_payload, dict):
             raise EdrMetadataError("collection metadata JSON must be an object")
 
-        self._metadata = self._parse_collection_metadata(
-            cast("dict[str, Any]", metadata_payload)
-        )
-        selected_format = self._negotiate_output_format(
-            self._metadata.cube_link.output_formats
-        )
+        self._metadata = self._parse_collection_metadata(cast("dict[str, Any]", metadata_payload))
+        selected_format = self._negotiate_output_format(self._metadata.cube_link.output_formats)
         self._cube_url = self._build_cube_url(self.collection_url, self.instance)
         validated_crs = encode_crs(
             self.crs,
@@ -132,13 +128,9 @@ class EdrDataStore:
                     f"available: {sorted(self._metadata.parameters)}"
                 )
             filtered_params = {
-                k: v
-                for k, v in self._metadata.parameters.items()
-                if k in self.parameter_names
+                k: v for k, v in self._metadata.parameters.items() if k in self.parameter_names
             }
-            filtered_metadata = dataclasses.replace(
-                self._metadata, parameters=filtered_params
-            )
+            filtered_metadata = dataclasses.replace(self._metadata, parameters=filtered_params)
         else:
             filtered_metadata = self._metadata
 

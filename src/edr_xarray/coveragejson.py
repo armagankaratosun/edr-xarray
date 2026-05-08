@@ -53,9 +53,7 @@ def _parse_axis_values(name: str, spec: dict[str, Any]) -> np.ndarray:
     if "values" in spec:
         raw = spec["values"]
         if name == "t":
-            stripped = [
-                (s[:-1] if isinstance(s, str) and s.endswith("Z") else s) for s in raw
-            ]
+            stripped = [(s[:-1] if isinstance(s, str) and s.endswith("Z") else s) for s in raw]
             return np.array(
                 [np.datetime64(s, "ns") for s in stripped],
                 dtype="datetime64[ns]",
@@ -65,9 +63,7 @@ def _parse_axis_values(name: str, spec: dict[str, Any]) -> np.ndarray:
         return np.linspace(
             float(spec["start"]), float(spec["stop"]), int(spec["num"]), dtype=np.float64
         )
-    raise EdrCoverageJsonError(
-        f"axis '{name}' must define either 'values' or 'start'/'stop'/'num'"
-    )
+    raise EdrCoverageJsonError(f"axis '{name}' must define either 'values' or 'start'/'stop'/'num'")
 
 
 def _nested_str(spec: dict[str, Any], *path: str) -> str | None:
@@ -97,9 +93,7 @@ def _parse_range(
     if rtype == "TiledNdArray":
         raise EdrUnsupportedFeatureError("TiledNdArray ranges not supported in v1")
     if rtype != "NdArray":
-        raise EdrCoverageJsonError(
-            f"range '{name}' has unsupported type '{rtype}'"
-        )
+        raise EdrCoverageJsonError(f"range '{name}' has unsupported type '{rtype}'")
 
     axis_names: tuple[str, ...] = tuple(spec["axisNames"])
     shape: tuple[int, ...] = tuple(spec["shape"])
@@ -117,9 +111,7 @@ def _parse_range(
         arr = np.asarray(cleaned, dtype=np.float64).reshape(shape)
     else:
         if any(v is None for v in values):
-            raise EdrCoverageJsonError(
-                "null values in integer range are not supported"
-            )
+            raise EdrCoverageJsonError("null values in integer range are not supported")
         arr = np.asarray(values).reshape(shape)
 
     return axis_names, shape, arr
@@ -138,9 +130,7 @@ def parse_coverage(payload: dict[str, Any]) -> CoverageData:
 
     dt = domain.get("domainType")
     if dt != "Grid":
-        raise EdrUnsupportedFeatureError(
-            f"only Grid domainType supported in v1, got '{dt}'"
-        )
+        raise EdrUnsupportedFeatureError(f"only Grid domainType supported in v1, got '{dt}'")
 
     axes_raw = domain.get("axes")
     if not isinstance(axes_raw, dict):
@@ -155,8 +145,7 @@ def parse_coverage(payload: dict[str, Any]) -> CoverageData:
     if not isinstance(parameters_raw, dict):
         raise EdrCoverageJsonError("payload missing 'parameters' object")
     parameters: dict[str, ParameterDef] = {
-        name: _parse_parameter(name, spec)
-        for name, spec in parameters_raw.items()
+        name: _parse_parameter(name, spec) for name, spec in parameters_raw.items()
     }
 
     ranges_raw = payload.get("ranges")
