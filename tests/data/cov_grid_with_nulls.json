@@ -1,0 +1,31 @@
+{
+  "type": "Coverage",
+  "domain": {
+    "type": "Domain",
+    "domainType": "Grid",
+    "axes": {
+      "x": {"values": [10.0, 11.0]},
+      "y": {"values": [40.0, 41.0]},
+      "t": {"values": ["2025-01-01T00:00:00Z"]}
+    },
+    "referencing": []
+  },
+  "parameters": {
+    "temperature": {
+      "type": "Parameter",
+      "observedProperty": {
+        "id": "temperature",
+        "label": {"en": "Temperature"}
+      }
+    }
+  },
+  "ranges": {
+    "temperature": {
+      "type": "NdArray",
+      "dataType": "float",
+      "axisNames": ["t", "y", "x"],
+      "shape": [1, 2, 2],
+      "values": [273.15, null, 275.15, 276.15]
+    }
+  }
+}
