@@ -90,10 +90,15 @@ def _probe_axes(
     metadata: CollectionMetadata,
     request_callable: RequestCallable,
     cube_url: str,
+    user_bbox: tuple[float, float, float, float] | None = None,
 ) -> tuple[AxisInfo, ...]:
     temporal = _require_temporal(metadata)
+    # Use the user's bbox if supplied so the discovered axes match what
+    # subsequent .values fetches will return.  Otherwise fall back to a
+    # small probe at the collection's SW corner to stay under cell limits.
+    probe_bbox = user_bbox if user_bbox is not None else _minimal_probe_bbox(metadata.spatial.bbox)
     params = {
-        "bbox": encode_bbox(_minimal_probe_bbox(metadata.spatial.bbox)),
+        "bbox": encode_bbox(probe_bbox),
         "datetime": encode_datetime(temporal.interval[0]),
         "parameter-name": next(iter(metadata.parameters.keys())),
         "f": "CoverageJSON",
@@ -126,11 +131,12 @@ def discover_axes(
     request_callable: RequestCallable,
     cube_url: str,
     instance: str | None,
+    user_bbox: tuple[float, float, float, float] | None = None,
 ) -> tuple[AxisInfo, ...]:
     """Discover collection axes using probe, metadata-only, or strict strategy."""
     del instance
     if mode == "probe":
-        return _probe_axes(metadata, request_callable, cube_url)
+        return _probe_axes(metadata, request_callable, cube_url, user_bbox=user_bbox)
     if mode == "strict":
         temporal = metadata.temporal
         if temporal is None or temporal.values is None:

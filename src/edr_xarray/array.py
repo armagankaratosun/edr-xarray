@@ -108,8 +108,10 @@ class EdrBackendArray(BackendArray):
         )
 
     def _raw_indexing_method(self, key: tuple[Any, ...]) -> np.ndarray[Any, np.dtype[Any]]:
-        query_params: dict[str, str] = dict(self._store._translate_indexer(key, self._axes))
-        query_params.update(self._extra_query_params)
+        # Open-time defaults (bbox/datetime fallbacks, format, crs, z) go first.
+        # Indexer-supplied selectors (from .isel/.sel) override them when narrower.
+        query_params: dict[str, str] = dict(self._extra_query_params)
+        query_params.update(self._store._translate_indexer(key, self._axes))
         query_params["parameter-name"] = self._parameter_id
         query_params.setdefault("f", "CoverageJSON")
 
@@ -135,6 +137,19 @@ class EdrBackendArray(BackendArray):
         if cov.axis_names != expected_axis_names:
             permutation = [list(cov.axis_names).index(n) for n in expected_axis_names]
             arr = np.transpose(arr, axes=permutation)
+
+        # The indexer may include integer positions (e.g. .isel(t=0)).  xarray
+        # expects those dimensions removed from the returned shape.  Pick element
+        # 0 when the server already narrowed that axis to size 1, otherwise pick
+        # the original integer index.
+        if any(isinstance(k, int) for k in key):
+            sel: list[Any] = []
+            for i, k in enumerate(key):
+                if isinstance(k, int):
+                    sel.append(0 if arr.shape[i] == 1 else k)
+                else:
+                    sel.append(slice(None))
+            arr = arr[tuple(sel)]
 
         return cast("np.ndarray[Any, np.dtype[Any]]", arr)
 

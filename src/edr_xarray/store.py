@@ -198,6 +198,7 @@ class EdrDataStore:
             request_callable=self._request,
             cube_url=self._cube_url,
             instance=self.instance,
+            user_bbox=self.bbox,
         )
 
     def close(self) -> None:
