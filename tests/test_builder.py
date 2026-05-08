@@ -44,13 +44,21 @@ class FakeArray(BackendArray):
         return np.zeros(self.shape, dtype=self.dtype)
 
 
-class PlainArray:
+class PlainArray(BackendArray):
     call_count: int = 0
 
     def __init__(self, name: str, shape: tuple[int, ...]) -> None:
         self._name = name
-        self.shape = shape
-        self.dtype = np.dtype(np.float64)
+        self._shape = shape
+        self._dtype = np.dtype(np.float64)
+
+    @property
+    def shape(self) -> tuple[int, ...]:
+        return self._shape
+
+    @property
+    def dtype(self) -> np.dtype[np.float64]:
+        return self._dtype
 
     def __getitem__(self, key: indexing.ExplicitIndexer) -> np.ndarray[Any, np.dtype[np.float64]]:
         PlainArray.call_count += 1

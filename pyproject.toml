@@ -41,6 +41,7 @@ dev = [
     "pytest-cov>=5",
     "ruff>=0.6",
     "mypy>=1.10",
+    "pyright>=1.1.409",
 ]
 
 [tool.ruff]
@@ -54,6 +55,13 @@ ignore = ["D100", "D104", "D203", "D213"]
 [tool.ruff.format]
 quote-style = "double"
 
+[tool.pyright]
+pythonVersion = "3.11"
+typeCheckingMode = "basic"
+include = ["src", "tests"]
+venvPath = "."
+venv = ".venv"
+
 [tool.mypy]
 strict = true
 python_version = "3.11"
@@ -63,6 +71,7 @@ disallow_any_generics = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "-m 'not live'"
 markers = [
     "live: opt-in tests against live EDR server (requires EDR_LIVE_URL env)",
 ]

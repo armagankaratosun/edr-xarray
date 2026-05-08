@@ -1,7 +1,7 @@
 """Tests for edr_xarray.array — lazy BackendArray fetches via store hooks."""
 
 # pyright: reportMissingImports=false
-# ruff: noqa: D103
+# ruff: noqa: D103, ANN401
 
 from __future__ import annotations
 
@@ -71,7 +71,7 @@ def make_3d_axes() -> tuple[AxisInfo, ...]:
 
 
 def make_array(
-    store: object,
+    store: Any,
     axes: tuple[AxisInfo, ...] | None = None,
     param_id: str = "temperature",
     extra_query_params: dict[str, str] | None = None,

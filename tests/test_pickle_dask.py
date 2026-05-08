@@ -70,8 +70,13 @@ def test_pickle_preserves_store_state(httpserver: HTTPServer) -> None:
         arr = arr.array
 
     assert isinstance(arr, EdrBackendArray)
-    assert arr._store.collection_url == url
-    assert isinstance(arr._store._transport, Transport)
+    from typing import cast as _cast
+
+    from edr_xarray.store import EdrDataStore as _StoreImpl
+
+    concrete_store = _cast(_StoreImpl, arr._store)
+    assert concrete_store.collection_url == url
+    assert isinstance(concrete_store._transport, Transport)
 
 
 def test_pickle_array_roundtrip(httpserver: HTTPServer) -> None:
