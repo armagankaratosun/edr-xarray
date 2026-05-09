@@ -1,6 +1,5 @@
 """Tests for edr_xarray.array — lazy BackendArray fetches via store hooks."""
 
-# pyright: reportMissingImports=false
 # ruff: noqa: D103, ANN401
 
 from __future__ import annotations
@@ -192,6 +191,23 @@ def test_getitem_returns_correct_values() -> None:
     expected = np.array([[[273.15, 274.15], [275.15, 276.15]]])
     assert result.shape == (1, 2, 2)
     assert np.allclose(result, expected)
+
+
+def test_empty_slice_returns_empty_array_without_http() -> None:
+    store = make_mock_store(load_cov_grid_3d())
+    result = make_array(store)[indexing.BasicIndexer((slice(None), slice(0, 0), slice(None)))]
+
+    assert result.shape == (1, 0, 2)
+    assert result.dtype == np.dtype("float64")
+    store._request.assert_not_called()
+
+
+def test_stepped_slice_applies_post_fetch_selection() -> None:
+    store = make_mock_store(load_cov_grid_3d())
+    result = make_array(store)[indexing.BasicIndexer((slice(None), slice(None), slice(0, 2, 2)))]
+
+    assert result.shape == (1, 2, 1)
+    assert np.allclose(result, np.array([[[273.15], [275.15]]]))
 
 
 def test_outer_indexer_decomposed_by_adapter() -> None:

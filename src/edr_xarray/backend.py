@@ -33,7 +33,7 @@ class EdrBackendEntrypoint(BackendEntrypoint):
     Supports:
     - /cubes endpoint with CoverageJSON response
     - 2D, 3D, and 4D cubes (lat/lon/[z]/time)
-    - Lazy fetch via BackendArray (data only loaded on .values/.compute())
+    - Lazy fetch via BackendArray (data only loaded on .values/.load()/.compute())
     - Dask integration via preferred_chunks
     - Pickle-safe for Dask multiprocessing
     - Subclassable via EdrDataStore hook methods
@@ -136,7 +136,7 @@ class EdrBackendEntrypoint(BackendEntrypoint):
             crs=crs,
             z=z,
             session=actual_session,
-            discovery=discovery,  # type: ignore[arg-type]  # validated at store level
+            discovery=discovery,
             timeout=timeout,
         )
         ds = store.build_dataset()

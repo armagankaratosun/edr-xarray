@@ -1,6 +1,5 @@
 """Tests for edr_xarray.indexer — translate xarray indexer keys to EDR query params."""
 
-# pyright: reportMissingImports=false
 # ruff: noqa: D103
 
 from __future__ import annotations
@@ -51,10 +50,15 @@ def test_slice_extent_slice_with_start_stop() -> None:
     assert slice_extent(values, slice(1, 3)) == (11.0, 12.0)
 
 
-def test_slice_extent_slice_step_gt_1_raises() -> None:
+def test_slice_extent_slice_step_uses_selected_first_last() -> None:
     values = np.array([10.0, 11.0, 12.0])
-    with pytest.raises(ValueError, match="step > 1"):
-        slice_extent(values, slice(0, 3, 2))
+    assert slice_extent(values, slice(0, 3, 2)) == (10.0, 12.0)
+
+
+def test_slice_extent_empty_slice_raises() -> None:
+    values = np.array([10.0, 11.0, 12.0])
+    with pytest.raises(ValueError, match="empty slice"):
+        slice_extent(values, slice(0, 0))
 
 
 def test_full_slice_returns_empty_dict() -> None:
@@ -165,3 +169,10 @@ def test_explicit_subslice_not_starting_at_zero() -> None:
     key = (slice(1, 3), slice(None), slice(None))
     result = translate_indexer(key, axes)
     assert result == {"z": "850.0/500.0"}
+
+
+def test_stepped_x_slice_produces_bbox_covering_selected_points() -> None:
+    axes = (_y_axis(3), _x_axis(3))
+    key = (slice(None), slice(0, 3, 2))
+    result = translate_indexer(key, axes)
+    assert result == {"bbox": "10.0,40.0,12.0,42.0"}

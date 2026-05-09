@@ -1,6 +1,5 @@
 """Tests for edr_xarray.discovery — coordinate axis discovery strategies."""
 
-# pyright: reportMissingImports=false
 # ruff: noqa: D103
 
 from __future__ import annotations
@@ -14,6 +13,7 @@ import httpx
 import numpy as np
 import pytest
 
+from edr_xarray.coveragejson import parse_coverage
 from edr_xarray.discovery import axis_kind, discover_axes
 from edr_xarray.errors import (
     EdrCoverageJsonError,
@@ -127,7 +127,7 @@ def test_probe_mode_4d_includes_z_axis(sample_cov_grid_4d: dict[str, Any]) -> No
     assert np.allclose(axes[1].values, [1000.0, 850.0, 500.0])
 
 
-def test_probe_mode_uses_minimal_bbox_and_first_param_in_request(
+def test_probe_mode_uses_collection_bbox_and_first_param_in_request(
     sample_cov_grid_3d: dict[str, Any],
 ) -> None:
     request_callable = MagicMock(return_value=make_response(sample_cov_grid_3d))
@@ -143,11 +143,46 @@ def test_probe_mode_uses_minimal_bbox_and_first_param_in_request(
     request_callable.assert_called_once()
     assert request_callable.call_args.args == ("GET", "http://test/cube")
     assert request_callable.call_args.kwargs["params"] == {
-        "bbox": "10.0,40.0,10.1,40.1",
+        "bbox": "10.0,40.0,11.0,41.0",
         "datetime": "2025-01-01T00:00:00Z",
         "parameter-name": "temperature",
         "f": "CoverageJSON",
     }
+
+
+def test_probe_mode_uses_user_bbox_when_supplied(
+    sample_cov_grid_3d: dict[str, Any],
+) -> None:
+    request_callable = MagicMock(return_value=make_response(sample_cov_grid_3d))
+
+    discover_axes(
+        _make_metadata(),
+        mode="probe",
+        request_callable=request_callable,
+        cube_url="http://test/cube",
+        instance=None,
+        user_bbox=(10.2, 40.2, 10.4, 40.4),
+    )
+
+    assert request_callable.call_args.kwargs["params"]["bbox"] == "10.2,40.2,10.4,40.4"
+
+
+def test_probe_mode_routes_parsing_through_callable(
+    sample_cov_grid_3d: dict[str, Any],
+) -> None:
+    request_callable = MagicMock(return_value=make_response(sample_cov_grid_3d))
+    parse_coverage_callable = MagicMock(return_value=parse_coverage(sample_cov_grid_3d))
+
+    discover_axes(
+        _make_metadata(),
+        mode="probe",
+        request_callable=request_callable,
+        parse_coverage_callable=parse_coverage_callable,
+        cube_url="http://test/cube",
+        instance=None,
+    )
+
+    parse_coverage_callable.assert_called_once_with(sample_cov_grid_3d)
 
 
 def test_probe_mode_server_error_propagates() -> None:
@@ -292,7 +327,7 @@ def test_metadata_only_without_temporal_extent_returns_spatial_only() -> None:
 def test_strict_mode_raises_when_no_explicit_coord_values() -> None:
     request_callable = MagicMock()
 
-    with pytest.raises(EdrMetadataError, match="strict mode requires explicit coordinate values"):
+    with pytest.raises(EdrMetadataError, match="explicit temporal coordinate values"):
         discover_axes(
             _make_metadata(with_temporal_values=False),
             mode="strict",
@@ -303,19 +338,49 @@ def test_strict_mode_raises_when_no_explicit_coord_values() -> None:
     request_callable.assert_not_called()
 
 
-def test_strict_mode_succeeds_with_temporal_values() -> None:
+def test_strict_mode_raises_when_vertical_values_are_missing() -> None:
+    request_callable = MagicMock()
+
+    with pytest.raises(EdrMetadataError, match="explicit vertical coordinate values"):
+        discover_axes(
+            _make_metadata(with_vertical=True, with_vertical_values=False),
+            mode="strict",
+            request_callable=request_callable,
+            cube_url="http://test/cube",
+            instance=None,
+        )
+    request_callable.assert_not_called()
+
+
+def test_strict_mode_succeeds_with_required_explicit_values() -> None:
     request_callable = MagicMock()
 
     axes = discover_axes(
-        _make_metadata(),
+        _make_metadata(with_vertical=True),
         mode="strict",
         request_callable=request_callable,
         cube_url="http://test/cube",
         instance=None,
     )
 
-    assert [(axis.name, axis.kind) for axis in axes] == [("t", "t"), ("y", "y"), ("x", "x")]
+    assert [(axis.name, axis.kind) for axis in axes] == [
+        ("t", "t"),
+        ("z", "z"),
+        ("y", "y"),
+        ("x", "x"),
+    ]
     request_callable.assert_not_called()
+
+
+def test_invalid_discovery_mode_raises() -> None:
+    with pytest.raises(ValueError, match="invalid discovery mode"):
+        discover_axes(
+            _make_metadata(),
+            mode="surprise",
+            request_callable=MagicMock(),
+            cube_url="http://test/cube",
+            instance=None,
+        )
 
 
 @pytest.mark.parametrize(

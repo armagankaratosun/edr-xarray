@@ -1,6 +1,5 @@
 """Tests for edr_xarray.store — EdrDataStore orchestration."""
 
-# pyright: reportMissingImports=false
 # ruff: noqa: D103
 
 from __future__ import annotations
@@ -84,6 +83,11 @@ def test_metadata_only_one_request(httpserver: HTTPServer) -> None:
     assert _requests(httpserver) == ["/collections/test"]
     assert ds["temperature"].shape == (1, 2, 2)
     store.close()
+
+
+def test_invalid_discovery_mode_raises() -> None:
+    with pytest.raises(ValueError, match="invalid discovery mode"):
+        EdrDataStore(collection_url="http://test/collections/test", discovery="surprise")
 
 
 def test_build_dataset_returns_expected_data_vars(httpserver: HTTPServer) -> None:

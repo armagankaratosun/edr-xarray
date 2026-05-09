@@ -1,6 +1,0 @@
-{
-  "python.analysis.typeCheckingMode": "basic",
-  "python.analysis.diagnosticMode": "workspace",
-  "python.analysis.include": ["src", "tests"],
-  "python.analysis.pythonVersion": "3.11"
-}

@@ -4,8 +4,6 @@ These tests verify the documented hook contract:
 each hook can be overridden and the override IS invoked.
 """
 
-# pyright: reportMissingImports=false
-
 from __future__ import annotations
 
 import copy
@@ -166,7 +164,7 @@ def test_subclass_can_override_parse_coveragejson_for_extensions(
     ds = store.build_dataset()
     _ = ds["temperature"].values
 
-    assert call_count[0] >= 1
+    assert call_count[0] == 2
 
 
 def test_all_7_hooks_have_default_implementations() -> None:

@@ -1,6 +1,5 @@
 """Tests for edr_xarray.query — query parameter encoders and validators."""
 
-# pyright: reportMissingImports=false
 # ruff: noqa: D103
 
 from __future__ import annotations

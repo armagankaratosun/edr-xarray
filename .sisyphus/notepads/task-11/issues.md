@@ -1,1 +1,0 @@
-2026-05-08: The requested literal coverage target `--cov=src/edr_xarray/builder` did not collect data with the installed pytest-cov; final evidence uses the importable module target and shows 100% coverage.

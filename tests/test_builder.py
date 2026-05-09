@@ -1,6 +1,5 @@
 """Tests for building xarray variables from EDR metadata."""
 
-# pyright: reportMissingImports=false
 # ruff: noqa: D101,D102,D103,D105,D107
 
 from __future__ import annotations

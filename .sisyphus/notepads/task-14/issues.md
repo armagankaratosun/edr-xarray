@@ -1,1 +1,0 @@
-- Pyright LSP in this workspace needed local suppression for newly added backend imports from __init__.py/tests, while uv mypy --strict remained clean.

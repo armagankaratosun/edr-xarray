@@ -1,7 +1,6 @@
 """Tests for edr_xarray.backend xarray backend entrypoint."""
 
 # ruff: noqa: D103
-# pyright: reportAttributeAccessIssue=false, reportMissingImports=false
 
 from __future__ import annotations
 
@@ -13,6 +12,7 @@ from typing import Any
 import pytest
 import xarray as xr
 from pytest_httpserver import HTTPServer
+from xarray.backends import list_engines
 
 from edr_xarray.backend import EdrBackendEntrypoint
 
@@ -42,11 +42,11 @@ def request_paths(httpserver: HTTPServer) -> list[str]:
 
 
 def test_engine_registered() -> None:
-    assert "edr" in xr.backends.list_engines()
+    assert "edr" in list_engines()
 
 
 def test_engine_is_edr_backend_entrypoint() -> None:
-    assert isinstance(xr.backends.list_engines()["edr"], EdrBackendEntrypoint)
+    assert isinstance(list_engines()["edr"], EdrBackendEntrypoint)
 
 
 def test_open_dataset_returns_dataset(httpserver: HTTPServer) -> None:

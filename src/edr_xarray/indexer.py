@@ -31,28 +31,17 @@ def slice_extent(values: npt.NDArray[Any], idx: int | slice) -> tuple[Any, Any]:
         v = values[idx]
         return (v, v)
 
-    if idx.step is not None and idx.step != 1:
-        raise ValueError("step > 1 in slice is not supported in IndexingSupport.BASIC mode")
-
     n = len(values)
-    start = 0 if idx.start is None else (n + idx.start if idx.start < 0 else idx.start)
-
-    if idx.stop is None:
-        stop_inclusive = n - 1
-    else:
-        stop = n + idx.stop if idx.stop < 0 else idx.stop
-        stop_inclusive = stop - 1
-
-    return (values[start], values[stop_inclusive])
+    positions = tuple(range(*idx.indices(n)))
+    if not positions:
+        raise ValueError("empty slice cannot be represented as an EDR query extent")
+    return (values[positions[0]], values[positions[-1]])
 
 
 def _is_full_extent(idx: int | slice, length: int) -> bool:
     if isinstance(idx, int):
         return False
-    start = 0 if idx.start is None else idx.start
-    stop = length if idx.stop is None else idx.stop
-    step = 1 if idx.step is None else idx.step
-    return start == 0 and stop == length and step == 1
+    return tuple(range(*idx.indices(length))) == tuple(range(length))
 
 
 def _format_datetime(t: Any) -> str:  # noqa: ANN401

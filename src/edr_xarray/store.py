@@ -22,7 +22,7 @@ from edr_xarray.builder import (
     build_global_attrs,
 )
 from edr_xarray.coveragejson import CoverageData, parse_coverage
-from edr_xarray.discovery import DiscoveryMode, discover_axes
+from edr_xarray.discovery import DiscoveryMode, discover_axes, validate_discovery_mode
 from edr_xarray.errors import EdrMetadataError
 from edr_xarray.indexer import AxisInfo, translate_indexer
 from edr_xarray.metadata import (
@@ -56,7 +56,7 @@ class EdrDataStore:
         crs: str | None = None,
         z: float | str | None = None,
         session: httpx.Client | None = None,
-        discovery: DiscoveryMode = "probe",
+        discovery: str = "probe",
         timeout: float = 30.0,
     ) -> None:
         """Initialize store configuration without making network requests."""
@@ -67,7 +67,7 @@ class EdrDataStore:
         self.datetime = datetime
         self.crs = crs
         self.z = z
-        self.discovery: DiscoveryMode = discovery
+        self.discovery: DiscoveryMode = validate_discovery_mode(discovery)
         self.timeout = timeout
         self._transport = Transport(session=session, timeout=timeout)
         self._metadata: CollectionMetadata | None = None
@@ -196,6 +196,7 @@ class EdrDataStore:
             metadata,
             mode=self.discovery,
             request_callable=self._request,
+            parse_coverage_callable=self._parse_coveragejson,
             cube_url=self._cube_url,
             instance=self.instance,
             user_bbox=self.bbox,

@@ -39,5 +39,8 @@ jobs:
       - name: Type check (mypy)
         run: uv run mypy --strict src/edr_xarray
 
+      - name: Type check (pyright)
+        run: uv run pyright
+
       - name: Test with coverage
         run: uv run pytest --cov=src/edr_xarray --cov-fail-under=95 -v -m "not live"

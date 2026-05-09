@@ -3,8 +3,6 @@
 Dask tests are skipped if dask is not installed.
 """
 
-# pyright: reportMissingImports=false
-
 from __future__ import annotations
 
 import copy

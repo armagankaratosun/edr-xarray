@@ -8,8 +8,8 @@ Lazy [xarray](https://xarray.dev) backend for [OGC API - Environmental Data Retr
 
 `edr-xarray` registers `engine="edr"` with xarray, letting you open any EDR 1.1-compliant
 collection as a lazy `xarray.Dataset`. Data is only fetched from the server when you
-call `.values` or `.compute()` on a `DataArray` — opening the dataset issues at most one
-lightweight metadata request (plus an optional axis-discovery probe).
+call `.values`, `.load()`, or `.compute()` on a `DataArray` — opening the dataset
+issues at most one lightweight metadata request (plus an optional axis-discovery probe).
 
 Designed to be subclassed: downstream packages can override transport, metadata parsing,
 CoverageJSON handling, and URL routing via seven documented hook methods on `EdrDataStore`.
@@ -62,8 +62,8 @@ endpoint to discover the exact grid axes (resolution, coordinate arrays). Two al
 # Fewer requests but lower resolution coordinate arrays
 ds = xr.open_dataset(url, engine="edr", discovery="metadata_only")
 
-# strict: requires explicit coordinate arrays in extended metadata
-# Raises EdrMetadataError if metadata is insufficient
+# strict: requires explicit temporal/vertical coordinate values in metadata
+# and uses spatial bbox endpoints for x/y axes
 ds = xr.open_dataset(url, engine="edr", discovery="strict")
 ```
 
@@ -74,7 +74,7 @@ ds = xr.open_dataset(
     "https://edr.example.com/collections/model_output",
     engine="edr",
     instance="f024",
-    parameter_names=["FWI"],
+    parameter_names=["temperature"],
 )
 ```
 
@@ -103,6 +103,12 @@ ds = xr.open_dataset(url, engine="edr", session=client)
 The injected client is not closed by `edr-xarray` — manage its lifecycle yourself.
 
 ### Dask integration
+
+Install the optional Dask extra before opening datasets with `chunks=...`:
+
+```bash
+pip install "edr-xarray[dask]"
+```
 
 ```python
 # Chunk along time for out-of-core analysis
@@ -135,6 +141,12 @@ Available hooks: `_request`, `_parse_collection_metadata`, `_negotiate_output_fo
 
 See `tests/test_subclass_extensibility.py` for full usage examples.
 
+## Examples
+
+Guided Jupyter notebooks live in [`examples/`](examples/README.md). They use
+live EDR endpoints and make the lazy open, indexing, and fetch boundaries
+explicit.
+
 ## Limitations (v1)
 
 - Only `/cubes` queries are supported (no `/position`, `/area`, `/trajectory`, etc.).
@@ -147,7 +159,7 @@ See `tests/test_subclass_extensibility.py` for full usage examples.
 ## Development
 
 ```bash
-git clone https://github.com/edr-xarray/edr-xarray
+git clone https://github.com/armagankaratosun/edr-xarray
 cd edr-xarray
 uv sync
 uv run pytest

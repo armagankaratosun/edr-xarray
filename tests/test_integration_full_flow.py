@@ -1,7 +1,5 @@
 """End-to-end integration tests for the complete edr-xarray open->compute flow."""
 
-# pyright: reportMissingImports=false
-
 from __future__ import annotations
 
 import copy

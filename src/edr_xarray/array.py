@@ -107,7 +107,40 @@ class EdrBackendArray(BackendArray):
             ),
         )
 
+    def _result_shape(self, key: tuple[Any, ...]) -> tuple[int, ...]:
+        shape = []
+        for idx, axis_len in zip(key, self.shape, strict=True):
+            if isinstance(idx, int):
+                continue
+            if isinstance(idx, slice):
+                shape.append(len(range(*idx.indices(axis_len))))
+            else:
+                shape.append(axis_len)
+        return tuple(shape)
+
+    def _post_fetch_selector(
+        self, key: tuple[Any, ...], arr: np.ndarray[Any, Any]
+    ) -> tuple[Any, ...]:
+        selector: list[Any] = []
+        for i, idx in enumerate(key):
+            if isinstance(idx, int):
+                selector.append(0 if arr.shape[i] != self.shape[i] else idx)
+            elif isinstance(idx, slice):
+                if arr.shape[i] == self.shape[i]:
+                    selector.append(idx)
+                elif idx.step is not None and idx.step != 1:
+                    selector.append(slice(0, None, idx.step))
+                else:
+                    selector.append(slice(None))
+            else:
+                selector.append(slice(None))
+        return tuple(selector)
+
     def _raw_indexing_method(self, key: tuple[Any, ...]) -> np.ndarray[Any, np.dtype[Any]]:
+        result_shape = self._result_shape(key)
+        if any(axis_len == 0 for axis_len in result_shape):
+            return np.empty(result_shape, dtype=self.dtype)
+
         # Open-time defaults (bbox/datetime fallbacks, format, crs, z) go first.
         # Indexer-supplied selectors (from .isel/.sel) override them when narrower.
         query_params: dict[str, str] = dict(self._extra_query_params)
@@ -138,18 +171,7 @@ class EdrBackendArray(BackendArray):
             permutation = [list(cov.axis_names).index(n) for n in expected_axis_names]
             arr = np.transpose(arr, axes=permutation)
 
-        # The indexer may include integer positions (e.g. .isel(t=0)).  xarray
-        # expects those dimensions removed from the returned shape.  Pick element
-        # 0 when the server already narrowed that axis to size 1, otherwise pick
-        # the original integer index.
-        if any(isinstance(k, int) for k in key):
-            sel: list[Any] = []
-            for i, k in enumerate(key):
-                if isinstance(k, int):
-                    sel.append(0 if arr.shape[i] == 1 else k)
-                else:
-                    sel.append(slice(None))
-            arr = arr[tuple(sel)]
+        arr = arr[self._post_fetch_selector(key, arr)]
 
         return cast("np.ndarray[Any, np.dtype[Any]]", arr)
 

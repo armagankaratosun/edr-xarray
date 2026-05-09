@@ -1,6 +1,5 @@
 """Tests for edr_xarray.coveragejson — Grid CoverageJSON parser."""
 
-# pyright: reportMissingImports=false
 from __future__ import annotations
 
 import copy

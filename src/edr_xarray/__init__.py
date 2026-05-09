@@ -1,7 +1,9 @@
 """edr-xarray: Generic OGC API-EDR 1.1 xarray backend."""
 
-# pyright: reportMissingImports=false
 from __future__ import annotations
+
+from importlib.metadata import PackageNotFoundError, version
+from pathlib import Path
 
 from .array import EdrBackendArray
 from .backend import EdrBackendEntrypoint
@@ -15,7 +17,19 @@ from .errors import (
 )
 from .store import EdrDataStore
 
-__version__ = "0.1.0"
+
+def _read_version() -> str:
+    try:
+        return version("edr-xarray")
+    except PackageNotFoundError:
+        version_file = Path(__file__).resolve().parents[2] / "VERSION"
+        try:
+            return version_file.read_text(encoding="utf-8").strip()
+        except OSError:
+            return "0.0.0+unknown"
+
+
+__version__ = _read_version()
 __all__ = [
     "EdrBackendArray",
     "EdrBackendEntrypoint",

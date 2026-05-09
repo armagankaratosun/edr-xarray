@@ -19,7 +19,9 @@ import xarray as xr
 
 
 def _base_url() -> str:
-    return os.environ.get("EDR_LIVE_URL", "http://localhost:8000")
+    if url := os.environ.get("EDR_LIVE_URL"):
+        return url
+    pytest.skip("EDR_LIVE_URL is not set")
 
 
 def _collection_id(server_url: str) -> str:
@@ -30,8 +32,11 @@ def _collection_id(server_url: str) -> str:
     """
     if col := os.environ.get("EDR_LIVE_COLLECTION"):
         return col
-    resp = httpx.get(f"{server_url}/collections", timeout=5.0)
-    resp.raise_for_status()
+    try:
+        resp = httpx.get(f"{server_url}/collections", timeout=5.0)
+        resp.raise_for_status()
+    except httpx.HTTPError as exc:
+        pytest.skip(f"could not list collections from {server_url}: {exc}")
     collections = resp.json().get("collections", [])
     if not collections:
         pytest.skip("server advertises no collections")

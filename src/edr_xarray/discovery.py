@@ -3,7 +3,7 @@
 Three modes:
 - 'probe': issues one HTTP request to discover full grid axes
 - 'metadata_only': uses only collection metadata (bbox/temporal values)
-- 'strict': requires explicit coord values in extended metadata
+- 'strict': requires explicit temporal/vertical coordinate values in metadata
 
 All are pure except 'probe' mode which calls request_callable.
 """
@@ -11,21 +11,30 @@ All are pure except 'probe' mode which calls request_callable.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any, Literal, cast
+from typing import Any, Final, Literal, cast
 
 import httpx
 import numpy as np
 
-from edr_xarray.coveragejson import parse_coverage
+from edr_xarray.coveragejson import CoverageData, parse_coverage
 from edr_xarray.errors import EdrCoverageJsonError, EdrMetadataError
 from edr_xarray.indexer import AxisInfo
 from edr_xarray.metadata import CollectionMetadata, TemporalExtent
 from edr_xarray.query import encode_bbox, encode_datetime
 
-__all__ = ["DiscoveryMode", "RequestCallable", "axis_kind", "discover_axes"]
+__all__ = [
+    "DiscoveryMode",
+    "ParseCoverageCallable",
+    "RequestCallable",
+    "axis_kind",
+    "discover_axes",
+    "validate_discovery_mode",
+]
 
 DiscoveryMode = Literal["probe", "metadata_only", "strict"]
+DISCOVERY_MODES: Final = frozenset(("probe", "metadata_only", "strict"))
 RequestCallable = Callable[..., httpx.Response]
+ParseCoverageCallable = Callable[[dict[str, Any]], CoverageData]
 AxisKind = Literal["x", "y", "z", "t"]
 
 
@@ -77,26 +86,26 @@ def _require_temporal(metadata: CollectionMetadata) -> TemporalExtent:
     return metadata.temporal
 
 
-def _minimal_probe_bbox(
-    bbox: tuple[float, float, float, float],
-) -> tuple[float, float, float, float]:
-    """Return a tiny bbox near the collection's SW corner to minimise cell count."""
-    lon_min, lat_min, lon_max, lat_max = bbox
-    step = min(0.1, (lon_max - lon_min) / 2, (lat_max - lat_min) / 2)
-    return (lon_min, lat_min, lon_min + step, lat_min + step)
+def validate_discovery_mode(mode: str) -> DiscoveryMode:
+    """Return a validated discovery mode or raise a clear error."""
+    if mode not in DISCOVERY_MODES:
+        allowed = ", ".join(sorted(DISCOVERY_MODES))
+        raise ValueError(f"invalid discovery mode {mode!r}; expected one of: {allowed}")
+    return cast("DiscoveryMode", mode)
 
 
 def _probe_axes(
     metadata: CollectionMetadata,
     request_callable: RequestCallable,
+    parse_coverage_callable: ParseCoverageCallable,
     cube_url: str,
     user_bbox: tuple[float, float, float, float] | None = None,
 ) -> tuple[AxisInfo, ...]:
     temporal = _require_temporal(metadata)
     # Use the user's bbox if supplied so the discovered axes match what
-    # subsequent .values fetches will return.  Otherwise fall back to a
-    # small probe at the collection's SW corner to stay under cell limits.
-    probe_bbox = user_bbox if user_bbox is not None else _minimal_probe_bbox(metadata.spatial.bbox)
+    # subsequent .values fetches will return.  Without a user bbox, probe the
+    # collection bbox because xarray requires fixed declared and returned shapes.
+    probe_bbox = user_bbox if user_bbox is not None else metadata.spatial.bbox
     params = {
         "bbox": encode_bbox(probe_bbox),
         "datetime": encode_datetime(temporal.interval[0]),
@@ -111,7 +120,7 @@ def _probe_axes(
     if not isinstance(raw_payload, dict):
         raise EdrCoverageJsonError("CoverageJSON response body must be a JSON object")
 
-    cov = parse_coverage(cast("dict[str, Any]", raw_payload))
+    cov = parse_coverage_callable(cast("dict[str, Any]", raw_payload))
     axes = []
     for name in cov.axis_names:
         kind = axis_kind(name)
@@ -127,20 +136,32 @@ def _probe_axes(
 def discover_axes(
     metadata: CollectionMetadata,
     *,
-    mode: DiscoveryMode,
+    mode: str,
     request_callable: RequestCallable,
+    parse_coverage_callable: ParseCoverageCallable = parse_coverage,
     cube_url: str,
     instance: str | None,
     user_bbox: tuple[float, float, float, float] | None = None,
 ) -> tuple[AxisInfo, ...]:
     """Discover collection axes using probe, metadata-only, or strict strategy."""
     del instance
-    if mode == "probe":
-        return _probe_axes(metadata, request_callable, cube_url, user_bbox=user_bbox)
-    if mode == "strict":
+    discovery_mode = validate_discovery_mode(mode)
+    if discovery_mode == "probe":
+        return _probe_axes(
+            metadata,
+            request_callable,
+            parse_coverage_callable,
+            cube_url,
+            user_bbox=user_bbox,
+        )
+    if discovery_mode == "strict":
         temporal = metadata.temporal
         if temporal is None or temporal.values is None:
             raise EdrMetadataError(
-                "strict mode requires explicit coordinate values in metadata; got only bbox"
+                "strict mode requires explicit temporal coordinate values in metadata"
+            )
+        if metadata.vertical is not None and metadata.vertical.values is None:
+            raise EdrMetadataError(
+                "strict mode requires explicit vertical coordinate values in metadata"
             )
     return _metadata_axes(metadata)

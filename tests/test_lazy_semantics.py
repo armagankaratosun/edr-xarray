@@ -8,8 +8,6 @@ Key invariants:
 - .isel() narrowing produces a narrower bbox in the cube request.
 """
 
-# pyright: reportMissingImports=false
-
 from __future__ import annotations
 
 import copy
@@ -154,7 +152,7 @@ def test_isel_subset_translates_to_narrow_query(httpserver: HTTPServer) -> None:
     assert "parameter-name" in qs, f"expected parameter-name in qs, got: {qs}"
     assert "bbox" in qs, f"expected bbox in qs, got: {qs}"
 
-    # Probe uses a minimal bbox (not the full extent) to avoid server cell-count limits.
+    # Probe uses the declared data bbox so discovered axes match later data fetches.
     probe_qs = cube_requests[0].query_string.decode()
     assert "bbox" in probe_qs, f"probe should contain bbox: {probe_qs}"
     # The data fetch bbox is degenerate in x: lon_min == lon_max == 10.0.
