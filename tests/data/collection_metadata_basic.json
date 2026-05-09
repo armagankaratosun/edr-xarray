@@ -1,0 +1,47 @@
+{
+  "id": "test_collection",
+  "title": "Test Collection",
+  "description": "A test EDR collection for unit tests",
+  "crs": ["http://www.opengis.net/def/crs/OGC/1.3/CRS84"],
+  "output_formats": ["CoverageJSON"],
+  "extent": {
+    "spatial": {
+      "bbox": [[10.0, 40.0, 11.0, 41.0]],
+      "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+    },
+    "temporal": {
+      "interval": [["2025-01-01T00:00:00Z", "2025-01-01T00:00:00Z"]],
+      "values": ["2025-01-01T00:00:00Z"]
+    }
+  },
+  "parameter_names": {
+    "temperature": {
+      "type": "Parameter",
+      "unit": {
+        "label": {"en": "Kelvin"},
+        "symbol": {
+          "value": "K",
+          "type": "http://www.opengis.net/def/uom/UCUM/"
+        }
+      },
+      "observedProperty": {
+        "id": "http://vocab.nerc.ac.uk/standard_name/air_temperature/",
+        "label": {"en": "Air temperature"}
+      }
+    }
+  },
+  "data_queries": {
+    "cube": {
+      "link": {
+        "href": "PLACEHOLDER_WILL_BE_REPLACED_BY_FIXTURE",
+        "rel": "data",
+        "type": "application/prs.coverage+json",
+        "variables": {
+          "output_formats": ["CoverageJSON"],
+          "default_output_format": "CoverageJSON",
+          "crs_details": [{"crs": "CRS84", "wkt": ""}]
+        }
+      }
+    }
+  }
+}
