@@ -94,9 +94,12 @@ class Transport:
         """
         response = self.request("GET", url, params=params, headers=headers)
         try:
-            return response.json()  # type: ignore[no-any-return]
+            payload = response.json()
         except Exception as exc:
             raise EdrServerError("non-JSON response", url=url) from exc
+        if not isinstance(payload, dict):
+            raise EdrServerError("JSON response must be an object", url=url)
+        return payload
 
     def close(self) -> None:
         """Close the underlying session if this Transport owns it. Idempotent."""

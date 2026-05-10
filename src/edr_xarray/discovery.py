@@ -2,7 +2,7 @@
 
 Three modes:
 - 'probe': issues one HTTP request to discover full grid axes
-- 'metadata_only': uses only collection metadata (bbox/temporal values)
+- 'metadata_only': uses only selected collection/instance metadata (bbox/temporal values)
 - 'strict': requires explicit temporal/vertical coordinate values in metadata
 
 All are pure except 'probe' mode which calls request_callable.
@@ -20,7 +20,7 @@ from edr_xarray.coveragejson import CoverageData, parse_coverage
 from edr_xarray.errors import EdrCoverageJsonError, EdrMetadataError
 from edr_xarray.indexer import AxisInfo
 from edr_xarray.metadata import CollectionMetadata, TemporalExtent
-from edr_xarray.query import encode_bbox, encode_datetime
+from edr_xarray.query import encode_bbox, encode_datetime, encode_z
 
 __all__ = [
     "DiscoveryMode",
@@ -100,18 +100,28 @@ def _probe_axes(
     parse_coverage_callable: ParseCoverageCallable,
     cube_url: str,
     user_bbox: tuple[float, float, float, float] | None = None,
+    user_datetime: str | None = None,
+    user_z: float | str | None = None,
 ) -> tuple[AxisInfo, ...]:
     temporal = _require_temporal(metadata)
     # Use the user's bbox if supplied so the discovered axes match what
-    # subsequent .values fetches will return.  Without a user bbox, probe the
-    # collection bbox because xarray requires fixed declared and returned shapes.
+    # subsequent .values fetches will return.  Do the same for datetime:
+    # bounded open-time windows must define the declared xarray time axis.
+    # Without user filters, probe the collection extent because xarray requires
+    # fixed declared and returned shapes.
     probe_bbox = user_bbox if user_bbox is not None else metadata.spatial.bbox
+    probe_datetime = user_datetime if user_datetime is not None else temporal.interval[0]
+    encoded_datetime = encode_datetime(probe_datetime)
+    assert encoded_datetime is not None
     params = {
         "bbox": encode_bbox(probe_bbox),
-        "datetime": encode_datetime(temporal.interval[0]),
+        "datetime": encoded_datetime,
         "parameter-name": next(iter(metadata.parameters.keys())),
         "f": "CoverageJSON",
     }
+    encoded_z = encode_z(user_z)
+    if encoded_z is not None:
+        params["z"] = encoded_z
     response = request_callable("GET", cube_url, params=params)
     try:
         raw_payload = response.json()
@@ -129,6 +139,10 @@ def _probe_axes(
             if kind == "t" and temporal.values is not None
             else cov.axes[name].values
         )
+        if kind == "t" and user_datetime is not None:
+            values = cov.axes[name].values
+        if kind == "z" and user_z is not None:
+            values = cov.axes[name].values
         axes.append(AxisInfo(name=name, values=values, kind=kind))
     return tuple(axes)
 
@@ -142,6 +156,8 @@ def discover_axes(
     cube_url: str,
     instance: str | None,
     user_bbox: tuple[float, float, float, float] | None = None,
+    user_datetime: str | None = None,
+    user_z: float | str | None = None,
 ) -> tuple[AxisInfo, ...]:
     """Discover collection axes using probe, metadata-only, or strict strategy."""
     del instance
@@ -153,6 +169,8 @@ def discover_axes(
             parse_coverage_callable,
             cube_url,
             user_bbox=user_bbox,
+            user_datetime=user_datetime,
+            user_z=user_z,
         )
     if discovery_mode == "strict":
         temporal = metadata.temporal

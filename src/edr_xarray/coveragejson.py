@@ -50,19 +50,34 @@ class CoverageData:
 
 
 def _parse_axis_values(name: str, spec: dict[str, Any]) -> np.ndarray:
+    if not isinstance(spec, dict):
+        raise EdrCoverageJsonError(f"axis '{name}' must be an object")
     if "values" in spec:
         raw = spec["values"]
-        if name == "t":
-            stripped = [(s[:-1] if isinstance(s, str) and s.endswith("Z") else s) for s in raw]
-            return np.array(
-                [np.datetime64(s, "ns") for s in stripped],
-                dtype="datetime64[ns]",
-            )
-        return np.asarray(raw, dtype=np.float64)
+        if not isinstance(raw, list):
+            raise EdrCoverageJsonError(f"axis '{name}'.values must be an array")
+        try:
+            if name.lower() in {"t", "time"}:
+                stripped = [(s[:-1] if isinstance(s, str) and s.endswith("Z") else s) for s in raw]
+                return np.array(
+                    [np.datetime64(s, "ns") for s in stripped],
+                    dtype="datetime64[ns]",
+                )
+            return np.asarray(raw, dtype=np.float64)
+        except (TypeError, ValueError) as exc:
+            raise EdrCoverageJsonError(f"axis '{name}'.values is malformed") from exc
     if "start" in spec and "stop" in spec and "num" in spec:
-        return np.linspace(
-            float(spec["start"]), float(spec["stop"]), int(spec["num"]), dtype=np.float64
-        )
+        try:
+            return np.linspace(
+                float(spec["start"]),
+                float(spec["stop"]),
+                int(spec["num"]),
+                dtype=np.float64,
+            )
+        except (TypeError, ValueError) as exc:
+            raise EdrCoverageJsonError(
+                f"axis '{name}' start/stop/num specification is malformed"
+            ) from exc
     raise EdrCoverageJsonError(f"axis '{name}' must define either 'values' or 'start'/'stop'/'num'")
 
 
@@ -76,6 +91,8 @@ def _nested_str(spec: dict[str, Any], *path: str) -> str | None:
 
 
 def _parse_parameter(name: str, spec: dict[str, Any]) -> ParameterDef:
+    if not isinstance(spec, dict):
+        raise EdrCoverageJsonError(f"parameter '{name}' must be an object")
     return ParameterDef(
         name=name,
         unit=_nested_str(spec, "unit", "symbol", "value"),
@@ -89,15 +106,31 @@ def _parse_range(
     name: str,
     spec: dict[str, Any],
 ) -> tuple[tuple[str, ...], tuple[int, ...], np.ndarray]:
+    if not isinstance(spec, dict):
+        raise EdrCoverageJsonError(f"range '{name}' must be an object")
     rtype = spec.get("type")
     if rtype == "TiledNdArray":
         raise EdrUnsupportedFeatureError("TiledNdArray ranges not supported in v1")
     if rtype != "NdArray":
         raise EdrCoverageJsonError(f"range '{name}' has unsupported type '{rtype}'")
 
-    axis_names: tuple[str, ...] = tuple(spec["axisNames"])
-    shape: tuple[int, ...] = tuple(spec["shape"])
-    values: list[Any] = spec["values"]
+    raw_axis_names = spec.get("axisNames")
+    if not isinstance(raw_axis_names, list) or not all(
+        isinstance(axis_name, str) for axis_name in raw_axis_names
+    ):
+        raise EdrCoverageJsonError(f"range '{name}'.axisNames must be an array of strings")
+    axis_names: tuple[str, ...] = tuple(raw_axis_names)
+
+    raw_shape = spec.get("shape")
+    if not isinstance(raw_shape, list) or not all(
+        isinstance(size, int) and size >= 0 for size in raw_shape
+    ):
+        raise EdrCoverageJsonError(f"range '{name}'.shape must be an array of integers")
+    shape: tuple[int, ...] = tuple(raw_shape)
+
+    values = spec.get("values")
+    if not isinstance(values, list):
+        raise EdrCoverageJsonError(f"range '{name}'.values must be an array")
 
     expected = math.prod(shape) if shape else 1
     if len(values) != expected:
@@ -106,13 +139,16 @@ def _parse_range(
         )
 
     data_type = spec.get("dataType")
-    if data_type in _FLOAT_DTYPES:
-        cleaned = [np.nan if v is None else float(v) for v in values]
-        arr = np.asarray(cleaned, dtype=np.float64).reshape(shape)
-    else:
-        if any(v is None for v in values):
-            raise EdrCoverageJsonError("null values in integer range are not supported")
-        arr = np.asarray(values).reshape(shape)
+    try:
+        if data_type in _FLOAT_DTYPES:
+            cleaned = [np.nan if v is None else float(v) for v in values]
+            arr = np.asarray(cleaned, dtype=np.float64).reshape(shape)
+        else:
+            if any(v is None for v in values):
+                raise EdrCoverageJsonError("null values in integer range are not supported")
+            arr = np.asarray(values).reshape(shape)
+    except (TypeError, ValueError) as exc:
+        raise EdrCoverageJsonError(f"range '{name}'.values is malformed") from exc
 
     return axis_names, shape, arr
 

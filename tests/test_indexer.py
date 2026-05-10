@@ -176,3 +176,23 @@ def test_stepped_x_slice_produces_bbox_covering_selected_points() -> None:
     key = (slice(None), slice(0, 3, 2))
     result = translate_indexer(key, axes)
     assert result == {"bbox": "10.0,40.0,12.0,42.0"}
+
+
+def test_descending_latitude_slice_produces_ordered_bbox() -> None:
+    axes = (
+        AxisInfo(name="y", values=np.array([42.0, 41.0, 40.0]), kind="y"),
+        _x_axis(3),
+    )
+    key = (slice(0, 2), slice(None))
+    result = translate_indexer(key, axes)
+    assert result == {"bbox": "10.0,41.0,12.0,42.0"}
+
+
+def test_descending_longitude_slice_produces_ordered_bbox() -> None:
+    axes = (
+        _y_axis(3),
+        AxisInfo(name="x", values=np.array([12.0, 11.0, 10.0]), kind="x"),
+    )
+    key = (slice(None), slice(0, 2))
+    result = translate_indexer(key, axes)
+    assert result == {"bbox": "11.0,40.0,12.0,42.0"}

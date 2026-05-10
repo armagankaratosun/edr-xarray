@@ -20,10 +20,24 @@ __all__ = [
 ]
 
 _ISO_INSTANT_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z")
+_CRS84_ALIASES = frozenset(
+    {
+        "crs84",
+        "http://www.opengis.net/def/crs/ogc/0/crs84",
+        "http://www.opengis.net/def/crs/ogc/1.3/crs84",
+    }
+)
 
 
 def _is_iso_instant(value: str) -> bool:
     return bool(_ISO_INSTANT_RE.fullmatch(value))
+
+
+def _crs_comparison_key(value: str) -> str:
+    key = value.lower()
+    if key in _CRS84_ALIASES:
+        return "crs84"
+    return key
 
 
 def encode_bbox(bbox: Sequence[float]) -> str:
@@ -111,10 +125,11 @@ def encode_parameter_names(names: list[str] | None) -> str | None:
 
 
 def encode_crs(crs: str | None, allowed: tuple[str, ...]) -> str | None:
-    """Validate that a CRS is advertised by the collection."""
+    """Validate that a CRS is advertised by the selected collection or instance."""
     if crs is None:
         return None
-    if crs not in allowed:
+    allowed_keys = {_crs_comparison_key(value) for value in allowed}
+    if _crs_comparison_key(crs) not in allowed_keys:
         raise EdrUnsupportedFeatureError(
             f"crs '{crs}' not in collection's advertised CRS list {allowed}"
         )

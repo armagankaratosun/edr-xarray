@@ -94,6 +94,7 @@ uv run ruff check src tests
 uv run ruff format --check src tests
 uv run mypy --strict src/edr_xarray
 uv run pyright
+uv run pyright --verifytypes edr_xarray --ignoreexternal
 uv run pytest --cov=src/edr_xarray --cov-fail-under=95 -v -m "not live"
 ```
 

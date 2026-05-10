@@ -94,6 +94,44 @@ def test_subclass_can_override_parse_metadata_for_extensions(httpserver: HTTPSer
     assert store.extra_title == "Test Collection"
 
 
+def test_parse_metadata_hook_receives_instance_metadata(httpserver: HTTPServer) -> None:
+    """_parse_collection_metadata is used for both collection and instance metadata."""
+
+    class CountingStore(EdrDataStore):
+        parsed_ids: list[str]
+
+        def _parse_collection_metadata(self, payload: dict[str, Any]) -> CollectionMetadata:
+            self.parsed_ids.append(str(payload["id"]))
+            return super()._parse_collection_metadata(payload)
+
+    meta = copy.deepcopy(META)
+    meta["id"] = "inst"
+    meta["data_queries"]["cube"]["link"]["href"] = httpserver.url_for("/collections/inst/cube")
+    meta["data_queries"]["instances"] = {
+        "link": {"href": httpserver.url_for("/collections/inst/instances")}
+    }
+    instance_meta = copy.deepcopy(meta)
+    instance_meta["id"] = "f024"
+    instance_meta["data_queries"]["cube"]["link"]["href"] = httpserver.url_for(
+        "/collections/inst/instances/f024/cube"
+    )
+
+    httpserver.expect_ordered_request("/collections/inst").respond_with_json(meta)
+    httpserver.expect_ordered_request("/collections/inst/instances/f024").respond_with_json(
+        instance_meta
+    )
+
+    store = CountingStore(
+        collection_url=httpserver.url_for("/collections/inst"),
+        instance="f024",
+        discovery="metadata_only",
+    )
+    store.parsed_ids = []
+    store.build_dataset()
+
+    assert store.parsed_ids == ["inst", "f024"]
+
+
 def test_subclass_can_override_build_cube_url_for_nonstandard_routing(
     httpserver: HTTPServer,
 ) -> None:

@@ -1,8 +1,8 @@
 """Lazy semantics tests — verify exact HTTP request counts for open vs compute.
 
 Key invariants:
-- discovery='metadata_only': exactly 1 HTTP request on open (metadata only).
-- discovery='probe': exactly 2 HTTP requests on open (metadata + probe).
+- discovery='metadata_only': exactly 1 HTTP request on open without instance=.
+- discovery='probe': exactly 2 HTTP requests on open without instance=.
 - .values triggers exactly 1 additional HTTP request.
 - .values called twice triggers 2 additional requests (no caching).
 - .isel() narrowing produces a narrower bbox in the cube request.

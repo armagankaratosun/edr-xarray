@@ -29,6 +29,10 @@ def load_cov_grid_3d() -> dict[str, Any]:
     return json.loads((_DATA_DIR / "cov_grid_3d.json").read_text())
 
 
+def load_cov_grid_4d() -> dict[str, Any]:
+    return json.loads((_DATA_DIR / "cov_grid_4d.json").read_text())
+
+
 def make_mock_store(cov_payload: dict[str, Any]) -> MagicMock:
     """Create a mock store whose hooks serve a given CoverageJSON payload."""
     store = MagicMock()
@@ -159,6 +163,194 @@ def test_axis_transposition_corrects_order() -> None:
     expected = np.array([[[1.0, 3.0], [2.0, 4.0]]])
     assert result.shape == (1, 2, 2)
     assert np.array_equal(result, expected)
+
+
+def test_omitted_singleton_axis_is_expanded() -> None:
+    payload = copy.deepcopy(load_cov_grid_3d())
+    payload["ranges"]["temperature"]["axisNames"] = ["y", "x"]
+    payload["ranges"]["temperature"]["shape"] = [2, 2]
+    payload["ranges"]["temperature"]["values"] = [273.15, 274.15, 275.15, 276.15]
+    store = make_mock_store(payload)
+
+    result = make_array(store)[indexing.BasicIndexer((slice(None),) * 3)]
+
+    assert result.shape == (1, 2, 2)
+    assert np.allclose(result, np.array([[[273.15, 274.15], [275.15, 276.15]]]))
+
+
+def test_omitted_non_singleton_axis_raises_clear_error() -> None:
+    payload = copy.deepcopy(load_cov_grid_3d())
+    payload["ranges"]["temperature"]["axisNames"] = ["t", "y"]
+    payload["ranges"]["temperature"]["shape"] = [1, 2]
+    payload["ranges"]["temperature"]["values"] = [273.15, 274.15]
+    store = make_mock_store(payload)
+
+    with pytest.raises(EdrCoverageJsonError, match="omitted axis 'x'"):
+        make_array(store)[indexing.BasicIndexer((slice(None),) * 3)]
+
+
+def test_unexpected_axis_raises_clear_error() -> None:
+    payload = copy.deepcopy(load_cov_grid_3d())
+    payload["domain"]["axes"]["member"] = {"values": [0.0]}
+    payload["ranges"]["temperature"]["axisNames"] = ["t", "member", "y", "x"]
+    payload["ranges"]["temperature"]["shape"] = [1, 1, 2, 2]
+    payload["ranges"]["temperature"]["values"] = [273.15, 274.15, 275.15, 276.15]
+    store = make_mock_store(payload)
+
+    with pytest.raises(EdrCoverageJsonError, match="unexpected axisNames"):
+        make_array(store)[indexing.BasicIndexer((slice(None),) * 3)]
+
+
+def test_scalar_spatial_indexer_rejects_empty_response_axis() -> None:
+    payload = copy.deepcopy(load_cov_grid_3d())
+    payload["domain"]["axes"]["x"]["values"] = []
+    payload["ranges"]["temperature"]["shape"] = [1, 2, 0]
+    payload["ranges"]["temperature"]["values"] = []
+    store = make_mock_store(payload)
+
+    with pytest.raises(EdrCoverageJsonError, match="no coordinates on axis 'x'"):
+        make_array(store)[indexing.BasicIndexer((slice(None), slice(None), 0))]
+
+
+def test_custom_parse_rank_mismatch_raises_clear_error() -> None:
+    payload = load_cov_grid_3d()
+    cov = parse_coverage(payload)
+    bad_cov = CoverageData(
+        axes=cov.axes,
+        axis_names=cov.axis_names,
+        shape=cov.shape,
+        parameters=cov.parameters,
+        ranges={"temperature": np.array([[1.0, 2.0]])},
+    )
+    store = make_mock_store(payload)
+    store._parse_coveragejson.side_effect = None
+    store._parse_coveragejson.return_value = bad_cov
+
+    with pytest.raises(EdrCoverageJsonError, match="array rank"):
+        make_array(store)[indexing.BasicIndexer((slice(None),) * 3)]
+
+
+def test_full_slice_shape_mismatch_raises_clear_error() -> None:
+    payload = copy.deepcopy(load_cov_grid_3d())
+    payload["domain"]["axes"]["t"]["values"] = [
+        "2025-01-01T00:00:00Z",
+        "2025-01-02T00:00:00Z",
+        "2025-01-03T00:00:00Z",
+        "2025-01-04T00:00:00Z",
+    ]
+    payload["ranges"]["temperature"]["shape"] = [4, 2, 2]
+    payload["ranges"]["temperature"]["values"] = [float(i) for i in range(16)]
+    store = make_mock_store(payload)
+
+    with pytest.raises(EdrCoverageJsonError, match="xarray expected shape"):
+        make_array(store)[indexing.BasicIndexer((slice(None),) * 3)]
+
+
+def test_scalar_indexer_accepts_full_declared_axis_response() -> None:
+    payload = copy.deepcopy(load_cov_grid_3d())
+    payload["domain"]["axes"]["t"]["values"] = [
+        "2025-01-01T00:00:00Z",
+        "2025-01-02T00:00:00Z",
+        "2025-01-03T00:00:00Z",
+        "2025-01-04T00:00:00Z",
+    ]
+    payload["ranges"]["temperature"]["shape"] = [4, 2, 2]
+    payload["ranges"]["temperature"]["values"] = [float(i) for i in range(16)]
+    axes = (
+        AxisInfo(
+            name="t",
+            values=np.array(
+                [
+                    "2025-01-01T00:00:00",
+                    "2025-01-02T00:00:00",
+                    "2025-01-03T00:00:00",
+                    "2025-01-04T00:00:00",
+                ],
+                dtype="datetime64[ns]",
+            ),
+            kind="t",
+        ),
+        AxisInfo(name="y", values=np.array([40.0, 41.0]), kind="y"),
+        AxisInfo(name="x", values=np.array([10.0, 11.0]), kind="x"),
+    )
+    store = make_mock_store(payload)
+
+    result = make_array(store, axes=axes)[indexing.BasicIndexer((0, slice(None), slice(None)))]
+
+    assert result.shape == (2, 2)
+    assert np.allclose(result, np.array([[0.0, 1.0], [2.0, 3.0]]))
+
+
+def test_scalar_indexer_rejects_partial_multi_coordinate_response() -> None:
+    payload = copy.deepcopy(load_cov_grid_3d())
+    payload["domain"]["axes"]["t"]["values"] = [
+        "2025-01-01T00:00:00Z",
+        "2025-01-02T00:00:00Z",
+    ]
+    payload["ranges"]["temperature"]["shape"] = [2, 2, 2]
+    payload["ranges"]["temperature"]["values"] = [float(i) for i in range(8)]
+    axes = (
+        AxisInfo(
+            name="t",
+            values=np.array(
+                [
+                    "2025-01-01T00:00:00",
+                    "2025-01-02T00:00:00",
+                    "2025-01-03T00:00:00",
+                    "2025-01-04T00:00:00",
+                ],
+                dtype="datetime64[ns]",
+            ),
+            kind="t",
+        ),
+        AxisInfo(name="y", values=np.array([40.0, 41.0]), kind="y"),
+        AxisInfo(name="x", values=np.array([10.0, 11.0]), kind="x"),
+    )
+    store = make_mock_store(payload)
+
+    with pytest.raises(EdrCoverageJsonError, match="scalar xarray indexer"):
+        make_array(store, axes=axes)[indexing.BasicIndexer((0, slice(None), slice(None)))]
+
+
+def test_scalar_spatial_indexer_rejects_partial_multi_coordinate_response() -> None:
+    payload = copy.deepcopy(load_cov_grid_3d())
+    payload["domain"]["axes"]["x"]["values"] = [10.0, 11.0]
+    payload["ranges"]["temperature"]["shape"] = [1, 2, 2]
+    payload["ranges"]["temperature"]["values"] = [273.15, 274.15, 275.15, 276.15]
+    axes = (
+        AxisInfo(
+            name="t",
+            values=np.array(["2025-01-01T00:00:00"], dtype="datetime64[ns]"),
+            kind="t",
+        ),
+        AxisInfo(name="y", values=np.array([40.0, 41.0]), kind="y"),
+        AxisInfo(name="x", values=np.array([10.0, 11.0, 12.0]), kind="x"),
+    )
+    store = make_mock_store(payload)
+
+    with pytest.raises(EdrCoverageJsonError, match="axis 'x'"):
+        make_array(store, axes=axes)[indexing.BasicIndexer((slice(None), slice(None), 0))]
+
+
+def test_scalar_z_indexer_accepts_full_declared_axis_response() -> None:
+    axes = (
+        AxisInfo(
+            name="t",
+            values=np.array(["2025-01-01T00:00:00"], dtype="datetime64[ns]"),
+            kind="t",
+        ),
+        AxisInfo(name="z", values=np.array([1000.0, 850.0, 500.0]), kind="z"),
+        AxisInfo(name="y", values=np.array([40.0, 41.0]), kind="y"),
+        AxisInfo(name="x", values=np.array([10.0, 11.0]), kind="x"),
+    )
+    store = make_mock_store(load_cov_grid_4d())
+
+    result = make_array(store, axes=axes)[
+        indexing.BasicIndexer((slice(None), 0, slice(None), slice(None)))
+    ]
+
+    assert result.shape == (1, 2, 2)
+    assert np.allclose(result, np.array([[[273.15, 274.15], [275.15, 276.15]]]))
 
 
 def test_missing_parameter_range_raises() -> None:

@@ -75,6 +75,117 @@ def test_time_axis_parsed_to_datetime64(sample_cov_grid_3d: dict[str, Any]) -> N
     assert (t_axis.values == expected).all()
 
 
+def test_time_named_axis_parsed_to_datetime64(sample_cov_grid_3d: dict[str, Any]) -> None:
+    """CoverageJSON servers may name the temporal axis 'time' instead of 't'."""
+    payload = copy.deepcopy(sample_cov_grid_3d)
+    payload["domain"]["axes"]["time"] = payload["domain"]["axes"].pop("t")
+    payload["ranges"]["temperature"]["axisNames"] = ["time", "y", "x"]
+
+    cov = parse_coverage(payload)
+
+    assert cov.axes["time"].values.dtype == np.dtype("datetime64[ns]")
+
+
+@pytest.mark.parametrize(
+    ("field", "message"),
+    [
+        ("axisNames", "axisNames"),
+        ("shape", "shape"),
+        ("values", "values"),
+    ],
+)
+def test_reject_malformed_range_required_fields(
+    sample_cov_grid_3d: dict[str, Any],
+    field: str,
+    message: str,
+) -> None:
+    """Malformed range array metadata is raised as an edr-xarray error."""
+    payload = copy.deepcopy(sample_cov_grid_3d)
+    del payload["ranges"]["temperature"][field]
+
+    with pytest.raises(EdrCoverageJsonError, match=message):
+        parse_coverage(payload)
+
+
+def test_reject_malformed_axis_coordinate_spec(sample_cov_grid_3d: dict[str, Any]) -> None:
+    """Malformed axis coordinate specs are raised as edr-xarray errors."""
+    payload = copy.deepcopy(sample_cov_grid_3d)
+    payload["domain"]["axes"]["x"]["values"] = "not-an-array"
+
+    with pytest.raises(EdrCoverageJsonError, match=r"axis 'x'\.values"):
+        parse_coverage(payload)
+
+
+def test_reject_non_object_axis_spec(sample_cov_grid_3d: dict[str, Any]) -> None:
+    """Axis specs must be objects."""
+    payload = copy.deepcopy(sample_cov_grid_3d)
+    payload["domain"]["axes"]["x"] = []
+
+    with pytest.raises(EdrCoverageJsonError, match="axis 'x'"):
+        parse_coverage(payload)
+
+
+def test_reject_bad_time_axis_value(sample_cov_grid_3d: dict[str, Any]) -> None:
+    """Malformed temporal coordinate values are wrapped in EdrCoverageJsonError."""
+    payload = copy.deepcopy(sample_cov_grid_3d)
+    payload["domain"]["axes"]["t"]["values"] = ["not-a-date"]
+
+    with pytest.raises(EdrCoverageJsonError, match=r"axis 't'\.values"):
+        parse_coverage(payload)
+
+
+def test_reject_bad_regular_axis_spec() -> None:
+    """Malformed start/stop/num axis specs are wrapped in EdrCoverageJsonError."""
+    payload = {
+        "type": "Coverage",
+        "domain": {
+            "type": "Domain",
+            "domainType": "Grid",
+            "axes": {"x": {"start": "bad", "stop": 4.0, "num": 5}},
+        },
+        "parameters": {"p": {"type": "Parameter"}},
+        "ranges": {
+            "p": {
+                "type": "NdArray",
+                "dataType": "float",
+                "axisNames": ["x"],
+                "shape": [5],
+                "values": [0.0, 1.0, 2.0, 3.0, 4.0],
+            }
+        },
+    }
+
+    with pytest.raises(EdrCoverageJsonError, match="start/stop/num"):
+        parse_coverage(payload)
+
+
+def test_reject_non_object_parameter_spec(sample_cov_grid_3d: dict[str, Any]) -> None:
+    """Parameter specs must be objects."""
+    payload = copy.deepcopy(sample_cov_grid_3d)
+    payload["parameters"]["temperature"] = []
+
+    with pytest.raises(EdrCoverageJsonError, match="parameter 'temperature'"):
+        parse_coverage(payload)
+
+
+def test_reject_non_object_range_spec(sample_cov_grid_3d: dict[str, Any]) -> None:
+    """Range specs must be objects."""
+    payload = copy.deepcopy(sample_cov_grid_3d)
+    payload["ranges"]["temperature"] = []
+
+    with pytest.raises(EdrCoverageJsonError, match="range 'temperature'"):
+        parse_coverage(payload)
+
+
+def test_reject_malformed_float_range_values(sample_cov_grid_3d: dict[str, Any]) -> None:
+    """Float ranges must contain numeric values or nulls."""
+    payload = copy.deepcopy(sample_cov_grid_3d)
+    payload["ranges"]["temperature"]["values"][0] = "bad"
+
+    with pytest.raises(EdrCoverageJsonError, match="values is malformed"):
+        parse_coverage(payload)
+
+
 def test_null_values_become_nan(sample_cov_grid_with_nulls: dict[str, Any]) -> None:
     """A null in a float range becomes NaN in the output array."""
     cov = parse_coverage(sample_cov_grid_with_nulls)

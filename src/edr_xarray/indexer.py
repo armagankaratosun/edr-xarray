@@ -55,6 +55,12 @@ def _format_bbox(lon_min: float, lat_min: float, lon_max: float, lat_max: float)
     return encode_bbox((lon_min, lat_min, lon_max, lat_max))
 
 
+def _ordered_extent(extent: tuple[Any, Any]) -> tuple[float, float]:
+    first = float(extent[0])
+    last = float(extent[1])
+    return (min(first, last), max(first, last))
+
+
 def translate_indexer(
     key: tuple[int | slice, ...],
     axes: tuple[AxisInfo, ...],
@@ -100,11 +106,13 @@ def translate_indexer(
             result["datetime"] = encoded_dt
 
     if not spatial_full and lon_extent is not None and lat_extent is not None:
+        lon_min, lon_max = _ordered_extent(lon_extent)
+        lat_min, lat_max = _ordered_extent(lat_extent)
         result["bbox"] = _format_bbox(
-            float(lon_extent[0]),
-            float(lat_extent[0]),
-            float(lon_extent[1]),
-            float(lat_extent[1]),
+            lon_min,
+            lat_min,
+            lon_max,
+            lat_max,
         )
 
     return result

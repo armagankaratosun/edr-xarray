@@ -94,7 +94,8 @@ class EdrBackendEntrypoint(BackendEntrypoint):
             decode_timedelta: Accepted for xarray compatibility.
             concat_characters: Accepted for xarray compatibility.
             instance: Optional instance ID for collections with instances
-                (e.g. forecast runs). Produces /collections/{id}/instances/{instance}/cube.
+                (e.g. forecast runs). Fetches instance metadata and reads data from
+                /collections/{id}/instances/{instance}/cube.
             parameter_names: List of parameter names to include. If None,
                 all advertised parameters are included.
             bbox: Spatial subset as (lon_min, lat_min, lon_max, lat_max) in CRS84.
@@ -125,7 +126,14 @@ class EdrBackendEntrypoint(BackendEntrypoint):
                 f"got: {filename_or_obj!r}"
             )
 
-        actual_session = session if isinstance(session, httpx.Client) else None
+        if session is None:
+            actual_session = None
+        elif isinstance(session, httpx.Client):
+            actual_session = session
+        else:
+            raise TypeError(
+                f"session must be an httpx.Client or None, got {type(session).__name__}"
+            )
 
         store = EdrDataStore(
             collection_url=filename_or_obj,
@@ -145,6 +153,7 @@ class EdrBackendEntrypoint(BackendEntrypoint):
             if isinstance(drop_variables, str):
                 drop_variables = [drop_variables]
             ds = ds.drop_vars(list(drop_variables))
+            ds.set_close(store.close)
 
         return ds
 

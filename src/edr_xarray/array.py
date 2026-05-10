@@ -118,6 +118,89 @@ class EdrBackendArray(BackendArray):
                 shape.append(axis_len)
         return tuple(shape)
 
+    def _selection_length(self, axis_index: int, idx: Any) -> int:  # noqa: ANN401
+        axis_len = self.shape[axis_index]
+        if isinstance(idx, int):
+            return 1
+        if isinstance(idx, slice):
+            return len(range(*idx.indices(axis_len)))
+        return axis_len
+
+    def _normalize_axes(
+        self,
+        cov: CoverageData,
+        arr: np.ndarray[Any, Any],
+        key: tuple[Any, ...],
+    ) -> np.ndarray[Any, Any]:
+        expected_axis_names = tuple(axis.name for axis in self._axes)
+        returned_axis_names = list(cov.axis_names)
+        if arr.ndim != len(returned_axis_names):
+            raise EdrCoverageJsonError(
+                f"server returned array rank {arr.ndim} for parameter "
+                f"'{self._parameter_id}', but axisNames has {len(returned_axis_names)} axes"
+            )
+        extra_axis_names = sorted(set(returned_axis_names) - set(expected_axis_names))
+        if extra_axis_names:
+            raise EdrCoverageJsonError(
+                f"server returned unexpected axisNames {extra_axis_names} "
+                f"for parameter '{self._parameter_id}'; expected axes {expected_axis_names}"
+            )
+
+        normalized = arr
+        for target_position, axis_name in enumerate(expected_axis_names):
+            if axis_name in returned_axis_names:
+                current_position = returned_axis_names.index(axis_name)
+                if current_position != target_position:
+                    normalized = np.moveaxis(normalized, current_position, target_position)
+                    returned_axis_names.pop(current_position)
+                    returned_axis_names.insert(target_position, axis_name)
+            else:
+                if self._selection_length(target_position, key[target_position]) != 1:
+                    raise EdrCoverageJsonError(
+                        f"server omitted axis '{axis_name}' for parameter "
+                        f"'{self._parameter_id}', but the requested xarray selection "
+                        "requires more than one coordinate on that axis"
+                    )
+                normalized = np.expand_dims(normalized, axis=target_position)
+                returned_axis_names.insert(target_position, axis_name)
+
+        return normalized
+
+    def _validate_prefetch_shape(
+        self,
+        key: tuple[Any, ...],
+        arr: np.ndarray[Any, Any],
+    ) -> None:
+        if arr.ndim != len(self._axes):
+            raise EdrCoverageJsonError(
+                f"server returned array rank {arr.ndim} for parameter "
+                f"'{self._parameter_id}', but xarray declared {len(self._axes)} dimensions"
+            )
+        for axis_index, idx in enumerate(key):
+            axis = self._axes[axis_index]
+            if isinstance(idx, int) and arr.shape[axis_index] == 0:
+                raise EdrCoverageJsonError(
+                    f"server returned no coordinates on axis '{axis.name}' for scalar "
+                    f"xarray indexer {idx!r}; expected 1"
+                )
+            if isinstance(idx, int) and arr.shape[axis_index] not in {1, self.shape[axis_index]}:
+                raise EdrCoverageJsonError(
+                    f"server returned {arr.shape[axis_index]} coordinates on axis "
+                    f"'{axis.name}' for scalar xarray indexer {idx!r}; expected either "
+                    f"1 or the full declared axis length {self.shape[axis_index]}"
+                )
+
+    def _validate_result_shape(
+        self,
+        result_shape: tuple[int, ...],
+        arr: np.ndarray[Any, Any],
+    ) -> None:
+        if arr.shape != result_shape:
+            raise EdrCoverageJsonError(
+                f"server returned shape {arr.shape} for parameter '{self._parameter_id}', "
+                f"but xarray expected shape {result_shape} from declared shape {self.shape}"
+            )
+
     def _post_fetch_selector(
         self, key: tuple[Any, ...], arr: np.ndarray[Any, Any]
     ) -> tuple[Any, ...]:
@@ -168,10 +251,12 @@ class EdrBackendArray(BackendArray):
 
         expected_axis_names = tuple(a.name for a in self._axes)
         if cov.axis_names != expected_axis_names:
-            permutation = [list(cov.axis_names).index(n) for n in expected_axis_names]
-            arr = np.transpose(arr, axes=permutation)
+            arr = self._normalize_axes(cov, arr, key)
 
-        arr = arr[self._post_fetch_selector(key, arr)]
+        self._validate_prefetch_shape(key, arr)
+
+        arr = np.asarray(arr[self._post_fetch_selector(key, arr)])
+        self._validate_result_shape(result_shape, arr)
 
         return cast("np.ndarray[Any, np.dtype[Any]]", arr)
 

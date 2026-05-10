@@ -22,8 +22,12 @@ uv run ruff check src tests
 uv run ruff format --check src tests
 uv run mypy --strict src/edr_xarray
 uv run pyright
+uv run pyright --verifytypes edr_xarray --ignoreexternal
 uv run pytest --cov=src/edr_xarray --cov-fail-under=95 -v -m "not live"
 ```
+
+`--ignoreexternal` keeps public type verification focused on `edr_xarray`; xarray,
+httpx, and NumPy still expose incomplete external type surfaces.
 
 Use live tests only when you have a server configured:
 

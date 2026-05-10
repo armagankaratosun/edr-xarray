@@ -7,8 +7,10 @@ from __future__ import annotations
 import copy
 import json
 from pathlib import Path
-from typing import Any
+from types import MethodType
+from typing import Any, cast
 
+import httpx
 import pytest
 import xarray as xr
 from pytest_httpserver import HTTPServer
@@ -110,6 +112,46 @@ def test_drop_variables_removes_variable(httpserver: HTTPServer) -> None:
     assert "temperature" not in ds.data_vars
     assert "humidity" in ds.data_vars
     ds.close()
+
+
+def test_drop_variables_preserves_close_callback(httpserver: HTTPServer) -> None:
+    meta = copy.deepcopy(META)
+    meta["parameter_names"]["humidity"] = copy.deepcopy(meta["parameter_names"]["temperature"])
+    meta["data_queries"]["cube"]["link"]["href"] = httpserver.url_for(
+        "/collections/test_collection/cube"
+    )
+    httpserver.expect_ordered_request(
+        "/collections/test_collection", method="GET"
+    ).respond_with_json(meta)
+    httpserver.expect_ordered_request(
+        "/collections/test_collection/cube", method="GET"
+    ).respond_with_json(COV_3D)
+
+    ds = xr.open_dataset(
+        httpserver.url_for("/collections/test_collection"),
+        engine="edr",
+        drop_variables=["temperature"],
+    )
+    close_callback = ds._close
+    assert isinstance(close_callback, MethodType)
+    store = cast(Any, close_callback.__self__)
+    session = store._transport._session
+
+    assert isinstance(session, httpx.Client)
+    assert not session.is_closed
+
+    ds.close()
+
+    assert session.is_closed
+
+
+def test_invalid_session_raises_type_error() -> None:
+    with pytest.raises(TypeError, match="session"):
+        xr.open_dataset(
+            "http://example.test/collections/test",
+            engine="edr",
+            session=object(),
+        )
 
 
 def test_open_dataset_is_lazy(httpserver: HTTPServer) -> None:

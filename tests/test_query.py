@@ -126,6 +126,23 @@ def test_encode_crs_allowed() -> None:
     assert encode_crs("CRS84", ("CRS84", "EPSG:4326")) == "CRS84"
 
 
+@pytest.mark.parametrize(
+    ("requested", "allowed"),
+    [
+        ("crs84", ("CRS84",)),
+        ("CRS84", ("crs84",)),
+        ("http://www.opengis.net/def/crs/OGC/1.3/CRS84", ("CRS84",)),
+        ("http://www.opengis.net/def/crs/OGC/0/CRS84", ("CRS84",)),
+        ("CRS84", ("http://www.opengis.net/def/crs/OGC/1.3/CRS84",)),
+        ("epsg:4326", ("EPSG:4326",)),
+    ],
+)
+def test_encode_crs_accepts_case_and_crs84_aliases(
+    requested: str, allowed: tuple[str, ...]
+) -> None:
+    assert encode_crs(requested, allowed) == requested
+
+
 def test_encode_crs_not_allowed_raises() -> None:
     with pytest.raises(EdrUnsupportedFeatureError, match="not in collection's advertised CRS list"):
         encode_crs("EPSG:3857", ("CRS84",))

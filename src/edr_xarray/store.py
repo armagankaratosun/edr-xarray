@@ -28,6 +28,7 @@ from edr_xarray.indexer import AxisInfo, translate_indexer
 from edr_xarray.metadata import (
     CollectionMetadata,
     cube_url,
+    instance_metadata_url,
     parse_collection_metadata,
 )
 from edr_xarray.query import (
@@ -40,6 +41,18 @@ from edr_xarray.query import (
 from edr_xarray.transport import Transport
 
 __all__ = ["EdrDataStore"]
+
+
+def _ordered_crs_union(*groups: tuple[str, ...]) -> tuple[str, ...]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for group in groups:
+        for value in group:
+            if value in seen:
+                continue
+            seen.add(value)
+            result.append(value)
+    return tuple(result)
 
 
 class EdrDataStore:
@@ -60,6 +73,8 @@ class EdrDataStore:
         timeout: float = 30.0,
     ) -> None:
         """Initialize store configuration without making network requests."""
+        if parameter_names is not None and not parameter_names:
+            raise ValueError("parameter_names must contain at least one parameter name")
         self.collection_url = collection_url
         self.instance = instance
         self.parameter_names = parameter_names
@@ -71,26 +86,47 @@ class EdrDataStore:
         self.timeout = timeout
         self._transport = Transport(session=session, timeout=timeout)
         self._metadata: CollectionMetadata | None = None
+        self._metadata_url: str | None = None
         self._cube_url: str | None = None
 
     def build_dataset(self) -> xr.Dataset:
         """Fetch collection metadata and build a lazy Dataset."""
-        response = self._request("GET", self.collection_url)
-        try:
-            metadata_payload = response.json()
-        except Exception as exc:
-            raise EdrMetadataError("collection metadata is not valid JSON") from exc
-        if not isinstance(metadata_payload, dict):
-            raise EdrMetadataError("collection metadata JSON must be an object")
+        collection_metadata = self._fetch_metadata(self.collection_url, kind="collection")
+        self._metadata = collection_metadata
+        self._metadata_url = self.collection_url
+        if self.instance is not None:
+            self._metadata_url = instance_metadata_url(
+                collection_metadata,
+                self.instance,
+                base_url=self.collection_url,
+            )
+            self._metadata = self._fetch_metadata(self._metadata_url, kind="instance")
 
-        self._metadata = self._parse_collection_metadata(cast("dict[str, Any]", metadata_payload))
+        if self.parameter_names is not None:
+            unknown = set(self.parameter_names) - set(self._metadata.parameters)
+            if unknown:
+                raise EdrMetadataError(
+                    f"parameter(s) {sorted(unknown)} not found in collection; "
+                    f"available: {sorted(self._metadata.parameters)}"
+                )
+            filtered_params = {
+                k: v for k, v in self._metadata.parameters.items() if k in self.parameter_names
+            }
+            filtered_metadata = dataclasses.replace(self._metadata, parameters=filtered_params)
+        else:
+            filtered_metadata = self._metadata
+
         selected_format = self._negotiate_output_format(self._metadata.cube_link.output_formats)
         self._cube_url = self._build_cube_url(self.collection_url, self.instance)
+        allowed_crs = _ordered_crs_union(
+            self._metadata.cube_link.crs_options,
+            self._metadata.crs_options,
+        )
         validated_crs = encode_crs(
             self.crs,
-            self._metadata.cube_link.crs_options or self._metadata.crs_options,
+            allowed_crs,
         )
-        axes = self._discover_axes(self._metadata)
+        axes = self._discover_axes(filtered_metadata)
 
         extra: dict[str, str] = {"f": selected_format}
         if validated_crs is not None:
@@ -100,16 +136,19 @@ class EdrDataStore:
             if z_str is not None:
                 extra["z"] = z_str
         # Always send bbox and datetime so servers that require them don't reject
-        # unsubsetted fetches.  User-supplied values take priority; the collection
-        # extent is the fallback.
+        # unsubsetted fetches.  User-supplied values take priority; the selected
+        # collection or instance metadata extent is the fallback.
         if self.datetime is not None:
             dt_str = encode_datetime(self.datetime)
             if dt_str is not None:
                 extra["datetime"] = dt_str
         elif self._metadata.temporal is not None:
             t = self._metadata.temporal
-            lo, hi = t.interval
-            extra["datetime"] = lo if lo == hi else f"{lo}/{hi}"
+            if t.values is None:
+                extra["datetime"] = encode_datetime(t.interval[0]) or t.interval[0]
+            else:
+                lo, hi = t.interval
+                extra["datetime"] = lo if lo == hi else f"{lo}/{hi}"
         if self.bbox is not None:
             extra["bbox"] = encode_bbox(self.bbox)
         else:
@@ -129,31 +168,27 @@ class EdrDataStore:
                 extra_query_params=extra,
             )
 
-        if self.parameter_names is not None:
-            unknown = set(self.parameter_names) - set(self._metadata.parameters)
-            if unknown:
-                raise EdrMetadataError(
-                    f"parameter(s) {sorted(unknown)} not found in collection; "
-                    f"available: {sorted(self._metadata.parameters)}"
-                )
-            filtered_params = {
-                k: v for k, v in self._metadata.parameters.items() if k in self.parameter_names
-            }
-            filtered_metadata = dataclasses.replace(self._metadata, parameters=filtered_params)
-        else:
-            filtered_metadata = self._metadata
-
         data_vars = build_data_variables(filtered_metadata, axes, make_array)
         coord_vars = build_coord_variables(axes, self._metadata)
         global_attrs = build_global_attrs(self._metadata)
 
         ds = xr.Dataset(
             data_vars,
-            coords=xr.Coordinates(coord_vars, indexes={}),
+            coords=coord_vars,
             attrs=global_attrs,
         )
         ds.set_close(self.close)
         return ds
+
+    def _fetch_metadata(self, url: str, *, kind: str) -> CollectionMetadata:
+        response = self._request("GET", url)
+        try:
+            metadata_payload = response.json()
+        except ValueError as exc:
+            raise EdrMetadataError(f"{kind} metadata is not valid JSON") from exc
+        if not isinstance(metadata_payload, dict):
+            raise EdrMetadataError(f"{kind} metadata JSON must be an object")
+        return self._parse_collection_metadata(cast("dict[str, Any]", metadata_payload))
 
     def _request(
         self,
@@ -177,7 +212,8 @@ class EdrDataStore:
     def _build_cube_url(self, collection_url: str, instance: str | None) -> str:
         """Build the cube endpoint URL. Override for non-standard routing."""
         assert self._metadata is not None, "_build_cube_url called before metadata was fetched"
-        return cube_url(self._metadata, instance, base_url=collection_url)
+        base_url = self._metadata_url if self._metadata_url is not None else collection_url
+        return cube_url(self._metadata, instance, base_url=base_url)
 
     def _parse_coveragejson(self, payload: dict[str, Any]) -> CoverageData:
         """Parse CoverageJSON response. Override for server-specific extensions."""
@@ -200,6 +236,8 @@ class EdrDataStore:
             cube_url=self._cube_url,
             instance=self.instance,
             user_bbox=self.bbox,
+            user_datetime=self.datetime,
+            user_z=self.z,
         )
 
     def close(self) -> None:

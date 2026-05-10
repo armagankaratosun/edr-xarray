@@ -4,7 +4,7 @@ dynamic = ["version"]
 description = "Generic OGC API-EDR 1.1 xarray backend"
 readme = "README.md"
 license = "Apache-2.0"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.13"
 authors = [{ name = "edr-xarray contributors" }]
 keywords = ["xarray", "edr", "ogc", "environmental-data-retrieval"]
 classifiers = [
@@ -29,6 +29,8 @@ edr = "edr_xarray.backend:EdrBackendEntrypoint"
 
 [project.urls]
 Repository = "https://github.com/armagankaratosun/edr-xarray"
+Issues = "https://github.com/armagankaratosun/edr-xarray/issues"
+Changelog = "https://github.com/armagankaratosun/edr-xarray/blob/main/CHANGELOG.md"
 
 [build-system]
 requires = ["hatchling"]
@@ -37,27 +39,23 @@ build-backend = "hatchling.build"
 [tool.hatch.build]
 ignore-vcs = true
 
-[tool.hatch.build.hooks.custom]
-path = "hatch_build.py"
-
 [tool.hatch.build.targets.wheel]
 packages = ["src/edr_xarray"]
 
 [tool.hatch.build.targets.sdist]
 only-include = [
-    "AGENTS.md",
     "CHANGELOG.md",
     "CONTRIBUTING.md",
-    "hatch_build.py",
     "LICENSE",
     "README.md",
     "VERSION",
-    "examples",
-    "plans",
+    "examples/01_quickstart.ipynb",
+    "examples/02_indexing_and_fetching.ipynb",
+    "examples/03_backend_options.ipynb",
+    "examples/README.md",
     "pyproject.toml",
     "src",
     "tests",
-    "uv.lock",
 ]
 
 [tool.hatch.version]

@@ -22,6 +22,16 @@ modules.
 - Opening a dataset is lazy with respect to data values. Metadata and optional
   probe requests are allowed; user data fetches happen through backend array
   indexing.
+- When `instance=` is supplied, the selected instance metadata is fetched at
+  open time and becomes the source of truth for axes, variables, attributes,
+  format negotiation, CRS validation, and default cube query filters.
+- Probe discovery declares axes for the open-time EDR subset. User-supplied
+  `bbox`, `datetime`, and `z` filters must be included in the probe so xarray
+  coordinates match later data fetches.
+- When metadata advertises explicit temporal values, those values define the
+  time coordinate and the metadata interval is the default fetch window. When
+  metadata only advertises a temporal interval and no `datetime=` is supplied,
+  opening defaults to the first instant for both probe discovery and fetches.
 - xarray owns `chunks` and `cache`. Backend code may set
   `Variable.encoding["preferred_chunks"]`, but must not bypass xarray's chunking
   path.

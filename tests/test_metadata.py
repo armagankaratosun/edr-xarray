@@ -16,6 +16,7 @@ from edr_xarray.metadata import (
     TemporalExtent,
     VerticalExtent,
     cube_url,
+    instance_metadata_url,
     parse_collection_metadata,
 )
 
@@ -177,6 +178,42 @@ def test_missing_cube_href_raises() -> None:
         parse_collection_metadata(payload)
 
 
+def test_non_object_data_queries_raises_cube_href_error() -> None:
+    """Non-object data_queries is treated as missing cube metadata."""
+    payload = _minimal_payload()
+    payload["data_queries"] = []
+
+    with pytest.raises(EdrMetadataError, match=r"(?i)cube"):
+        parse_collection_metadata(payload)
+
+
+def test_non_object_cube_query_raises_cube_href_error() -> None:
+    """Non-object cube query metadata is treated as missing cube metadata."""
+    payload = _minimal_payload()
+    payload["data_queries"]["cube"] = []
+
+    with pytest.raises(EdrMetadataError, match=r"(?i)cube"):
+        parse_collection_metadata(payload)
+
+
+def test_non_object_cube_variables_raises_metadata_error() -> None:
+    """Cube link variables must be an object."""
+    payload = _minimal_payload()
+    payload["data_queries"]["cube"]["link"]["variables"] = []
+
+    with pytest.raises(EdrMetadataError, match="variables"):
+        parse_collection_metadata(payload)
+
+
+def test_non_array_crs_details_raises_metadata_error() -> None:
+    """Cube CRS details must be an array."""
+    payload = _minimal_payload()
+    payload["data_queries"]["cube"]["link"]["variables"]["crs_details"] = "bad"
+
+    with pytest.raises(EdrMetadataError, match="crs_details"):
+        parse_collection_metadata(payload)
+
+
 def test_missing_spatial_bbox_raises() -> None:
     """Missing extent.spatial.bbox -> EdrMetadataError."""
     payload = _minimal_payload()
@@ -185,11 +222,56 @@ def test_missing_spatial_bbox_raises() -> None:
         parse_collection_metadata(payload)
 
 
+def test_short_spatial_bbox_raises_metadata_error() -> None:
+    """A malformed bbox entry is wrapped in EdrMetadataError."""
+    payload = _minimal_payload()
+    payload["extent"]["spatial"]["bbox"] = [[0.0, 0.0, 1.0]]
+
+    with pytest.raises(EdrMetadataError, match="four coordinates"):
+        parse_collection_metadata(payload)
+
+
+def test_non_numeric_spatial_bbox_raises_metadata_error() -> None:
+    """A bbox entry with non-numeric values is wrapped in EdrMetadataError."""
+    payload = _minimal_payload()
+    payload["extent"]["spatial"]["bbox"] = [["west", 0.0, 1.0, 1.0]]
+
+    with pytest.raises(EdrMetadataError, match="non-numeric"):
+        parse_collection_metadata(payload)
+
+
+def test_non_object_spatial_extent_raises_metadata_error() -> None:
+    """A non-object spatial extent is raised as EdrMetadataError."""
+    payload = _minimal_payload()
+    payload["extent"]["spatial"] = []
+
+    with pytest.raises(EdrMetadataError, match="bbox"):
+        parse_collection_metadata(payload)
+
+
 def test_missing_parameter_names_raises() -> None:
     """Missing parameter_names -> EdrMetadataError."""
     payload = _minimal_payload()
     del payload["parameter_names"]
     with pytest.raises(EdrMetadataError, match="parameter_names"):
+        parse_collection_metadata(payload)
+
+
+def test_parameter_names_non_object_raises() -> None:
+    """parameter_names must be an object."""
+    payload = _minimal_payload()
+    payload["parameter_names"] = []
+
+    with pytest.raises(EdrMetadataError, match="parameter_names"):
+        parse_collection_metadata(payload)
+
+
+def test_parameter_definition_non_object_raises() -> None:
+    """Each parameter definition must be an object."""
+    payload = _minimal_payload()
+    payload["parameter_names"] = {"p": []}
+
+    with pytest.raises(EdrMetadataError, match=r"parameter_names\.p"):
         parse_collection_metadata(payload)
 
 
@@ -228,6 +310,42 @@ def test_cube_url_nonstandard_href_raises() -> None:
         cube_url(meta, instance="f024", base_url="http://srv")
 
 
+def test_cube_url_with_instance_is_idempotent_for_instance_href() -> None:
+    """Instance cube hrefs are not rewritten with a duplicate /instances segment."""
+    payload = _full_payload()
+    payload["data_queries"]["cube"]["link"]["href"] = (
+        "http://srv/collections/msg_frm/instances/f024/cube"
+    )
+    meta = parse_collection_metadata(payload)
+
+    assert (
+        cube_url(meta, instance="f024", base_url="http://srv/collections/msg_frm/instances/f024")
+        == "http://srv/collections/msg_frm/instances/f024/cube"
+    )
+
+
+def test_cube_url_with_instance_relative_cube_href_uses_instance_base_url() -> None:
+    """Relative instance cube links resolve below the instance metadata URL."""
+    payload = _full_payload()
+    payload["data_queries"]["cube"]["link"]["href"] = "cube"
+    meta = parse_collection_metadata(payload)
+
+    assert (
+        cube_url(meta, instance="f024", base_url="http://srv/collections/msg_frm/instances/f024")
+        == "http://srv/collections/msg_frm/instances/f024/cube"
+    )
+
+
+def test_cube_url_with_instance_quotes_path_segment() -> None:
+    """Instance identifiers are encoded as one URL path segment."""
+    meta = parse_collection_metadata(_full_payload())
+
+    assert (
+        cube_url(meta, instance="run 00/member/a", base_url="http://srv")
+        == "http://srv/collections/msg_frm/instances/run%2000%2Fmember%2Fa/cube"
+    )
+
+
 def test_parameter_missing_observed_property() -> None:
     """Parameter without observedProperty yields standard_name=None, long_name=None."""
     payload = _minimal_payload()
@@ -254,10 +372,153 @@ def test_parameter_missing_unit_symbol() -> None:
     assert meta.parameters["x"].long_name == "x"
 
 
+def test_temporal_non_object_raises_metadata_error() -> None:
+    """Malformed temporal extent objects are rejected."""
+    payload = _minimal_payload()
+    payload["extent"]["temporal"] = []
+
+    with pytest.raises(EdrMetadataError, match=r"extent\.temporal"):
+        parse_collection_metadata(payload)
+
+
+def test_temporal_interval_non_array_raises_metadata_error() -> None:
+    """Temporal interval must be an array."""
+    payload = _minimal_payload()
+    payload["extent"]["temporal"] = {"interval": "bad"}
+
+    with pytest.raises(EdrMetadataError, match=r"temporal\.interval"):
+        parse_collection_metadata(payload)
+
+
+def test_temporal_interval_short_raises_metadata_error() -> None:
+    """Temporal interval entries must include start and end."""
+    payload = _minimal_payload()
+    payload["extent"]["temporal"] = {"interval": [["2025-01-01T00:00:00Z"]]}
+
+    with pytest.raises(EdrMetadataError, match="start and end"):
+        parse_collection_metadata(payload)
+
+
+def test_temporal_values_non_array_raises_metadata_error() -> None:
+    """Temporal values must be an array when present."""
+    payload = _minimal_payload()
+    payload["extent"]["temporal"] = {
+        "interval": [["2025-01-01T00:00:00Z", "2025-01-02T00:00:00Z"]],
+        "values": "bad",
+    }
+
+    with pytest.raises(EdrMetadataError, match=r"temporal\.values"):
+        parse_collection_metadata(payload)
+
+
+def test_vertical_non_object_raises_metadata_error() -> None:
+    """Malformed vertical extent objects are rejected."""
+    payload = _minimal_payload()
+    payload["extent"]["vertical"] = []
+
+    with pytest.raises(EdrMetadataError, match=r"extent\.vertical"):
+        parse_collection_metadata(payload)
+
+
+def test_vertical_interval_non_array_raises_metadata_error() -> None:
+    """Vertical interval must be an array."""
+    payload = _minimal_payload()
+    payload["extent"]["vertical"] = {"interval": "bad"}
+
+    with pytest.raises(EdrMetadataError, match=r"vertical\.interval"):
+        parse_collection_metadata(payload)
+
+
+def test_vertical_interval_short_raises_metadata_error() -> None:
+    """Vertical interval entries must include lower and upper values."""
+    payload = _minimal_payload()
+    payload["extent"]["vertical"] = {"interval": [[1000.0]]}
+
+    with pytest.raises(EdrMetadataError, match="lower and upper"):
+        parse_collection_metadata(payload)
+
+
+def test_vertical_interval_non_numeric_raises_metadata_error() -> None:
+    """Vertical interval values must be numeric."""
+    payload = _minimal_payload()
+    payload["extent"]["vertical"] = {"interval": [["low", 1000.0]]}
+
+    with pytest.raises(EdrMetadataError, match="non-numeric"):
+        parse_collection_metadata(payload)
+
+
+def test_vertical_values_non_array_raises_metadata_error() -> None:
+    """Vertical values must be an array when present."""
+    payload = _minimal_payload()
+    payload["extent"]["vertical"] = {"interval": [[0.0, 1000.0]], "values": "bad"}
+
+    with pytest.raises(EdrMetadataError, match=r"vertical\.values"):
+        parse_collection_metadata(payload)
+
+
+def test_vertical_values_non_numeric_raises_metadata_error() -> None:
+    """Vertical values must contain numeric entries."""
+    payload = _minimal_payload()
+    payload["extent"]["vertical"] = {"interval": [[0.0, 1000.0]], "values": ["bad"]}
+
+    with pytest.raises(EdrMetadataError, match=r"vertical\.values"):
+        parse_collection_metadata(payload)
+
+
 def test_instances_link_extracted() -> None:
     """Payload with data_queries.instances.link.href populates instances_link."""
     meta = parse_collection_metadata(_full_payload())
     assert meta.instances_link == "http://srv/collections/msg_frm/instances"
+
+
+def test_instance_metadata_url_uses_advertised_instances_link() -> None:
+    """Instance metadata URL is resolved below data_queries.instances.link.href."""
+    meta = parse_collection_metadata(_full_payload())
+
+    assert (
+        instance_metadata_url(meta, "f024", base_url="http://srv/collections/msg_frm")
+        == "http://srv/collections/msg_frm/instances/f024"
+    )
+
+
+def test_instance_metadata_url_handles_relative_instances_link() -> None:
+    """Relative instances links are resolved against the collection URL."""
+    payload = _full_payload()
+    payload["data_queries"]["instances"]["link"]["href"] = "instances"
+    meta = parse_collection_metadata(payload)
+
+    assert (
+        instance_metadata_url(meta, "f024", base_url="http://srv/collections/msg_frm")
+        == "http://srv/collections/msg_frm/instances/f024"
+    )
+
+
+def test_instance_metadata_url_falls_back_to_standard_path() -> None:
+    """When no instances link is advertised, use /collections/{id}/instances/{instance}."""
+    meta = parse_collection_metadata(_minimal_payload())
+
+    assert (
+        instance_metadata_url(meta, "f024", base_url="http://srv/collections/test")
+        == "http://srv/collections/test/instances/f024"
+    )
+
+
+def test_instance_metadata_url_quotes_path_segment() -> None:
+    """Instance metadata URLs encode arbitrary IDs as one path segment."""
+    meta = parse_collection_metadata(_full_payload())
+
+    assert (
+        instance_metadata_url(meta, "run 00/member/a", base_url="http://srv/collections/msg_frm")
+        == "http://srv/collections/msg_frm/instances/run%2000%2Fmember%2Fa"
+    )
+
+
+def test_instance_metadata_url_empty_instance_raises() -> None:
+    """Empty instance identifiers are invalid path segments."""
+    meta = parse_collection_metadata(_full_payload())
+
+    with pytest.raises(EdrMetadataError, match="non-empty"):
+        instance_metadata_url(meta, "", base_url="http://srv/collections/msg_frm")
 
 
 def test_cube_url_relative_href() -> None:

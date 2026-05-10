@@ -106,6 +106,14 @@ def test_get_json_non_json_response_raises(httpserver: HTTPServer) -> None:
     assert "non-JSON" in str(exc_info.value)
 
 
+def test_get_json_non_object_response_raises(httpserver: HTTPServer) -> None:
+    """A successful JSON array is not accepted where metadata objects are expected."""
+    httpserver.expect_request("/array", method="GET").respond_with_json([1, 2, 3])
+    url = httpserver.url_for("/array")
+    with Transport() as t, pytest.raises(EdrServerError, match="object"):
+        t.get_json(url)
+
+
 def test_pickle_round_trip() -> None:
     """Transport can be pickled and unpickled; the new instance has a fresh session."""
     t = Transport()

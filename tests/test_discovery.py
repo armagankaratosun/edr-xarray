@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import copy
 import json
 from pathlib import Path
 from typing import Any
@@ -165,6 +166,77 @@ def test_probe_mode_uses_user_bbox_when_supplied(
     )
 
     assert request_callable.call_args.kwargs["params"]["bbox"] == "10.2,40.2,10.4,40.4"
+
+
+def test_probe_mode_uses_user_datetime_when_supplied(
+    sample_cov_grid_3d: dict[str, Any],
+) -> None:
+    payload = copy.deepcopy(sample_cov_grid_3d)
+    payload["domain"]["axes"]["t"]["values"] = [
+        "2025-01-01T00:00:00Z",
+        "2025-01-02T00:00:00Z",
+        "2025-01-03T00:00:00Z",
+    ]
+    payload["ranges"]["temperature"]["shape"] = [3, 2, 2]
+    payload["ranges"]["temperature"]["values"] = [
+        273.15,
+        274.15,
+        275.15,
+        276.15,
+        277.15,
+        278.15,
+        279.15,
+        280.15,
+        281.15,
+        282.15,
+        283.15,
+        284.15,
+    ]
+    request_callable = MagicMock(return_value=make_response(payload))
+
+    axes = discover_axes(
+        _make_metadata(),
+        mode="probe",
+        request_callable=request_callable,
+        cube_url="http://test/cube",
+        instance=None,
+        user_datetime="2025-01-01T00:00:00Z/2025-01-03T00:00:00Z",
+    )
+
+    assert request_callable.call_args.kwargs["params"]["datetime"] == (
+        "2025-01-01T00:00:00Z/2025-01-03T00:00:00Z"
+    )
+    assert np.array_equal(
+        axes[0].values,
+        np.array(
+            [
+                "2025-01-01T00:00:00",
+                "2025-01-02T00:00:00",
+                "2025-01-03T00:00:00",
+            ],
+            dtype="datetime64[ns]",
+        ),
+    )
+
+
+def test_probe_mode_uses_user_z_when_supplied(sample_cov_grid_4d: dict[str, Any]) -> None:
+    payload = copy.deepcopy(sample_cov_grid_4d)
+    payload["domain"]["axes"]["z"]["values"] = [850.0]
+    payload["ranges"]["temperature"]["shape"] = [1, 1, 2, 2]
+    payload["ranges"]["temperature"]["values"] = [273.15, 274.15, 275.15, 276.15]
+    request_callable = MagicMock(return_value=make_response(payload))
+
+    axes = discover_axes(
+        _make_metadata(with_vertical=True),
+        mode="probe",
+        request_callable=request_callable,
+        cube_url="http://test/cube",
+        instance=None,
+        user_z=850.0,
+    )
+
+    assert request_callable.call_args.kwargs["params"]["z"] == "850.0"
+    assert np.allclose(axes[1].values, [850.0])
 
 
 def test_probe_mode_routes_parsing_through_callable(

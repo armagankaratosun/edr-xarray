@@ -9,8 +9,11 @@ from typing import Any
 
 import httpx
 import numpy as np
+import pytest
 import xarray as xr
 from pytest_httpserver import HTTPServer
+
+from edr_xarray.errors import EdrCoverageJsonError
 
 META_BASIC: dict[str, Any] = json.loads(
     Path("tests/data/collection_metadata_basic.json").read_text()
@@ -73,6 +76,32 @@ def test_open_dataset_then_select_then_compute_full_flow(httpserver: HTTPServer)
     ds.close()
 
 
+def test_values_raise_when_fetch_shape_exceeds_declared_time_axis(
+    httpserver: HTTPServer,
+) -> None:
+    """A server response with more times than declared fails through xarray .values."""
+    collection_url = _register_meta_and_probe(httpserver, "shape_mismatch")
+    mismatch = copy.deepcopy(COV_3D)
+    mismatch["domain"]["axes"]["t"]["values"] = [
+        "2025-01-01T00:00:00Z",
+        "2025-01-02T00:00:00Z",
+        "2025-01-03T00:00:00Z",
+        "2025-01-04T00:00:00Z",
+    ]
+    mismatch["ranges"]["temperature"]["shape"] = [4, 2, 2]
+    mismatch["ranges"]["temperature"]["values"] = [float(i) for i in range(16)]
+    httpserver.expect_request("/collections/shape_mismatch/cube", method="GET").respond_with_json(
+        mismatch
+    )
+
+    ds = xr.open_dataset(collection_url, engine="edr", parameter_names=["temperature"])
+    try:
+        with pytest.raises(EdrCoverageJsonError, match="xarray expected shape"):
+            _ = ds["temperature"].values
+    finally:
+        ds.close()
+
+
 def test_4d_cube_with_z(httpserver: HTTPServer) -> None:
     """4D cube with z axis is correctly discovered and exposed via probe."""
     meta = copy.deepcopy(META_BASIC)
@@ -101,15 +130,27 @@ def test_4d_cube_with_z(httpserver: HTTPServer) -> None:
 
 
 def test_instance_kwarg_routes_through_instance_url(httpserver: HTTPServer) -> None:
-    """instance= kwarg routes cube requests through /instances/{id}/cube."""
+    """instance= fetches instance metadata and routes cube requests through it."""
     meta = copy.deepcopy(META_INSTANCES)
     meta["id"] = "model"
     meta["data_queries"]["cube"]["link"]["href"] = httpserver.url_for("/collections/model/cube")
     meta["data_queries"]["instances"]["link"]["href"] = httpserver.url_for(
         "/collections/model/instances"
     )
+    instance_meta = copy.deepcopy(meta)
+    instance_meta["id"] = "f024"
+    instance_meta["title"] = "Model f024"
+    instance_meta["data_queries"]["cube"]["link"]["href"] = httpserver.url_for(
+        "/collections/model/instances/f024/cube"
+    )
 
-    httpserver.expect_request("/collections/model", method="GET").respond_with_json(meta)
+    httpserver.expect_ordered_request("/collections/model", method="GET").respond_with_json(meta)
+    httpserver.expect_ordered_request(
+        "/collections/model/instances/f024", method="GET"
+    ).respond_with_json(instance_meta)
+    httpserver.expect_ordered_request(
+        "/collections/model/instances/f024/cube", method="GET"
+    ).respond_with_json(COV_3D)
     httpserver.expect_request(
         "/collections/model/instances/f024/cube", method="GET"
     ).respond_with_json(COV_3D)
@@ -126,6 +167,7 @@ def test_instance_kwarg_routes_through_instance_url(httpserver: HTTPServer) -> N
     assert arr.shape == (1, 2, 2)
 
     paths = [request.path for request, _ in httpserver.log]
+    assert "/collections/model/instances/f024" in paths
     assert any("/instances/f024/cube" in p for p in paths), f"paths: {paths}"
     assert not any(p == "/collections/model/cube" for p in paths), f"paths: {paths}"
 
