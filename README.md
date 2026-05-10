@@ -2,7 +2,7 @@
 
 Lazy [xarray](https://xarray.dev) backend for [OGC API - Environmental Data Retrieval (EDR) 1.1](https://docs.ogc.org/is/19-086r6/19-086r6.html) `/cubes` endpoint.
 
-**Status**: alpha (v0.1.0)
+**Status**: alpha (v0.1.1)
 
 ## Overview
 

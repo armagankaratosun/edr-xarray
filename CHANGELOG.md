@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format follows Keep a Changelog, and this project uses SemVer-style
 `MAJOR.MINOR.PATCH` versions. Tags do not use a leading `v`.
 
+## [0.1.1] - 2026-05-10
+
+### Changed
+
+- Maintenance release with no runtime behavior changes from 0.1.0.
+
 ## [0.1.0] - 2026-05-09
 
 ### Added
